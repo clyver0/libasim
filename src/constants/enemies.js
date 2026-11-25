@@ -1,0 +1,67 @@
+import { PHYSICS } from './physics.js';
+
+/**
+ * Parâmetros centralizados para inimigos, IA, spawn e progressão de dificuldade.
+ * PROVISÓRIO: Todos os valores numéricos aguardam balanceamento definitivo
+ * conforme docs/TECHNICAL_DECISIONS.md (Seção 15).
+ */
+export const ENEMY_CONFIG = {
+  TOTAL_COMMON_ENEMIES: 100,
+
+  SIMULTANEOUS_LIMITS: {
+    EARLY_MAX_DEFEATED: 33,
+    EARLY_LIMIT: 5,
+    MID_MAX_DEFEATED: 66,
+    MID_LIMIT: 7,
+    LATE_LIMIT: 10,
+  },
+
+  SPAWN: {
+    TOP_Y: 32,
+    MARGIN_X: 48,
+    INITIAL_DELAY_MS: 450,
+    INTERVAL_MS: 1400,
+    MIN_PLAYER_DISTANCE_X: 140,
+    MIN_ACTIVE_TOP_SPACING_X: 60,
+    TOP_CHECK_Y: 130,
+    MAX_POSITION_ATTEMPTS: 12,
+  },
+
+  DIFFICULTY: {
+    HP_STEP_PER_VISIT: 0.25,
+    STRENGTH_STEP_PER_VISIT: 0.2,
+    SPEED_STEP_PER_VISIT: 0.1,
+    MAX_SPEED_MULTIPLIER: 1.6,
+  },
+
+  AI: {
+    DECISION_INTERVAL_MS: 180,
+    JUMP_COOLDOWN_MS: 450,
+    STUCK_CHECK_WINDOW_MS: 750,
+    STUCK_MIN_DISTANCE_X: 12,
+    UNSTICK_DURATION_MS: 450,
+    SEPARATION_RADIUS_X: 34,
+    SEPARATION_STRENGTH: 0.55,
+    EDGE_DROP_MARGIN: 10,
+    CLEARANCE_MARGIN: 14,
+    SURFACE_TOLERANCE_Y: 12,
+  },
+
+  HURT_DURATION_MS: 180,
+  KNOCKBACK_VELOCITY_SCALE: 6,
+
+  PLAYER_INVULNERABILITY_MS: 550,
+  PLAYER_HURT_KNOCKBACK_DURATION_MS: 140,
+
+  DEFAULT_JUMP_VELOCITY: PHYSICS.PLAYER_JUMP_VELOCITY,
+
+  STATES: {
+    FALLING: 'falling',
+    CHASING: 'chasing',
+    WINDUP: 'windup',
+    ATTACKING: 'attacking',
+    RECOVERING: 'recovering',
+    HURT: 'hurt',
+    DEAD: 'dead',
+  },
+};
