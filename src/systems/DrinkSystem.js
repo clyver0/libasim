@@ -107,7 +107,7 @@ export class DrinkSystem {
 
   /**
    * Calcula vetor de atração automática quando a bebida está dentro do raio configurado.
-   * `extraRadius` prepara a integração com Ímã de Bebidas / Mochila de Bebidas (Fase 6).
+   * `extraRadius` permite ampliar a atração automática com a Mochila de Bebidas.
    */
   computeAttractionVelocity(drinkPos, playerPos, { extraRadius = 0 } = {}) {
     const effectiveRadius = Math.max(

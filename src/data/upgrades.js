@@ -155,23 +155,23 @@ export const UPGRADES = [
     },
   },
   {
-    id: 'ima_de_bebidas',
+    id: 'aliado_chiquinho_promos',
     number: 9,
-    name: 'Ímã de Bebidas',
-    description: 'Atrai bebidas de longe automaticamente e melhora a mobilidade.',
+    name: 'Aliado Chiquinho Promos',
+    description: 'Aumenta em 20 pontos percentuais a chance de aparições extras do Noia.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
     modifiers: {
       gameplay: {
-        drinkMagnetBonus: 120,
-        moveSpeedMultiplier: 1.08,
+        specialShopChanceBonus: 0.2,
+        drinkRarityBonus: 0.15,
       },
     },
     visual: {
-      slot: 'magnet',
-      type: 'drink_magnet',
-      color: 0xef4444,
+      slot: 'chest_badge',
+      type: 'promo_badge',
+      color: 0xfacc15,
     },
   },
   {
@@ -237,12 +237,19 @@ export const UPGRADES = [
     id: 'tenis_de_foguete',
     number: 13,
     name: 'Tênis de Foguete',
-    description: 'Aumenta bastante a velocidade de corrida.',
+    description:
+      'Aumenta drasticamente a velocidade e a força; reduz pela metade a resistência a bebidas e diminui a sorte.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
     modifiers: {
-      gameplay: { moveSpeedMultiplier: 1.24 },
+      flat: { strength: 12 },
+      multiplier: { strength: 1.4, drinkResistance: 0.5 },
+      gameplay: {
+        moveSpeedMultiplier: 1.7,
+        damageMultiplier: 1.25,
+        drinkRarityBonus: -0.45,
+      },
     },
     visual: {
       slot: 'feet',
@@ -287,16 +294,19 @@ export const UPGRADES = [
     },
   },
   {
-    id: 'barriga_de_chope',
+    id: 'marmita_ketchup_roubado',
     number: 16,
-    name: 'Barriga de Chope',
-    description: 'Concede muito HP máximo em troca de um pouco de velocidade.',
+    name: 'Marmita com Ketchup Roubado do Coffe Corner',
+    description: 'Dá muita vida e defesa, mas deixa os inimigos 12% mais rápidos.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
     modifiers: {
-      flat: { maxHp: 50 },
-      gameplay: { moveSpeedMultiplier: 0.88 },
+      flat: { maxHp: 45 },
+      gameplay: {
+        damageReduction: 0.16,
+        enemyMoveSpeedMultiplier: 1.12,
+      },
     },
     visual: {
       slot: 'torso_shape',
@@ -362,21 +372,25 @@ export const UPGRADES = [
     },
   },
   {
-    id: 'chapeu_da_sorte',
+    id: 'chines_do_gab',
     number: 20,
-    name: 'Chapéu da Sorte',
-    description: 'Aumenta a chance de bebidas raras e concede HP máximo.',
+    name: 'Chinês do GAB (São Paulo)',
+    description: 'Dá uma camisa de time estilosa e mais sorte; inimigos ficam 10% mais lentos, mas você perde um pouco de mobilidade e resistência.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
     modifiers: {
-      flat: { maxHp: 15 },
-      gameplay: { drinkRarityBonus: 1.0 },
+      flat: { strength: 2, drinkResistance: -0.08 },
+      gameplay: {
+        drinkRarityBonus: 0.65,
+        moveSpeedMultiplier: 0.94,
+        enemyMoveSpeedMultiplier: 0.9,
+      },
     },
     visual: {
-      slot: 'head_hat',
-      type: 'lucky_hat',
-      color: 0x16a34a,
+      slot: 'torso',
+      type: 'team_jersey',
+      color: 0x2563eb,
     },
   },
   {
@@ -444,40 +458,55 @@ export const UPGRADES = [
     },
   },
   {
-    id: 'faixa_ninja',
+    id: 'faixa_branca_jiu_emy',
     number: 24,
-    name: 'Faixa Ninja',
-    description: 'Reduz bastante o tempo de recuperação e acelera os golpes.',
+    name: 'Faixa branca de jiu do Emery',
+    description: 'Mais força e dano nos golpes, com ataques ligeiramente mais lentos.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
     modifiers: {
+      flat: { strength: 5 },
       gameplay: {
-        recoveryMultiplier: 0.7,
-        attackSpeedMultiplier: 1.1,
+        damageMultiplier: 1.16,
+        attackSpeedMultiplier: 0.94,
+        moveSpeedMultiplier: 0.97,
       },
     },
     visual: {
-      slot: 'headband',
-      type: 'ninja_headband',
-      color: 0x0ea5e9,
+      slot: 'waist',
+      type: 'white_jiu_belt',
+      color: 0xf8fafc,
     },
   },
   {
-    id: 'corrente_de_ouro',
+    id: 'cachaca_de_cobra',
     number: 25,
-    name: 'Corrente de Ouro',
-    description: 'Aumenta a força dos golpes e prolonga o efeito das bebidas.',
+    name: 'Cachaça de Cobra',
+    description: 'Ativa por 15 segundos: aumenta bastante força e velocidade, mas reduz defesa e drena vida.',
     stackable: false,
     incompatibleWith: [],
     requirements: [],
-    modifiers: {
-      flat: { strength: 6, drinkResistance: -0.2 },
+    modifiers: {},
+    temporaryDrinkEffect: {
+      durationOverrideMs: 15000,
+      healthDrainPerSecond: 4,
+      color: 0x84cc16,
+      colorHex: '#84cc16',
+      effectSummary: '+8 Força • +35% Dano • +30% Veloc. • +20% Dano recebido • -4 HP/s',
+      modifiers: {
+        flat: { strength: 8 },
+        gameplay: {
+          damageMultiplier: 1.35,
+          moveSpeedMultiplier: 1.3,
+          damageTakenMultiplier: 1.2,
+        },
+      },
     },
     visual: {
-      slot: 'neck',
-      type: 'gold_chain',
-      color: 0xfacc15,
+      slot: 'tattoo',
+      type: 'snake_tattoo',
+      color: 0x84cc16,
     },
   },
   {
@@ -580,8 +609,12 @@ export const UPGRADES = [
 export function summarizeUpgradeEffects(upgrade, { separator = ' • ', maxItems = 3 } = {}) {
   const tags = [];
   const flat = upgrade?.modifiers?.flat ?? {};
+  const multiplier = upgrade?.modifiers?.multiplier ?? {};
   const gp = upgrade?.modifiers?.gameplay ?? {};
 
+  if (upgrade?.temporaryDrinkEffect) {
+    tags.push('Efeito especial • 15s');
+  }
   if (flat.strength) tags.push(`${flat.strength > 0 ? '+' : ''}${flat.strength} Força`);
   if (flat.maxHp) tags.push(`${flat.maxHp > 0 ? '+' : ''}${flat.maxHp} Vida`);
   if (gp.damageMultiplier && gp.damageMultiplier !== 1) {
@@ -620,6 +653,13 @@ export function summarizeUpgradeEffects(upgrade, { separator = ' • ', maxItems
   if (gp.drinkRarityBonus) {
     tags.push(gp.drinkRarityBonus > 0 ? '+Sorte' : '-Sorte');
   }
+  if (gp.specialShopChanceBonus) {
+    tags.push(`+${Math.round(gp.specialShopChanceBonus * 100)}% Noia`);
+  }
+  if (gp.enemyMoveSpeedMultiplier && gp.enemyMoveSpeedMultiplier !== 1) {
+    const pct = Math.round((gp.enemyMoveSpeedMultiplier - 1) * 100);
+    tags.push(`${pct > 0 ? '+' : ''}${pct}% Inimigos`);
+  }
   if (gp.knockbackResistance) {
     tags.push(`-${Math.round(gp.knockbackResistance * 100)}% Empurrão`);
   }
@@ -629,6 +669,11 @@ export function summarizeUpgradeEffects(upgrade, { separator = ' • ', maxItems
   if (flat.drinkResistance) {
     const sign = flat.drinkResistance > 0 ? '+' : '';
     tags.push(`${sign}${Math.round(flat.drinkResistance * 100)}% Resist.`);
+  }
+  if (multiplier.drinkResistance && multiplier.drinkResistance !== 1) {
+    tags.push(
+      `${Math.round((multiplier.drinkResistance - 1) * 100)}% Resist.`
+    );
   }
 
   return tags.slice(0, maxItems).join(separator);

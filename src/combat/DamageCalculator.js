@@ -46,6 +46,7 @@ export class DamageCalculator {
       attackTypeMultiplier *
       globalDamageMultiplier *
       bonusMultiplier *
+      (targetStats.damageTakenMultiplier ?? 1) *
       (1 - targetReduction);
 
     return Math.max(1, Math.round(rawDamage));

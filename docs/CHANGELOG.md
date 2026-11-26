@@ -7,6 +7,34 @@ O arquivo registra funcionalidades implementadas, modificações técnicas e cor
 
 ## [Unreleased]
 
+### Expansão — Personagens, Habilidades, Inimigos, Efeitos Visuais e Áudio
+#### Funcionalidades novas
+- **Modais das duas lojas em tela cheia**: a oficial usa a arte do Chiquinho Promos e a especial usa a nova imagem do Noia como fundo; cards centralizados sobre uma camada de contraste.
+- **Proporção dos sprites de bebida corrigida**: altura visual fixa pelo corpo físico e largura derivada das dimensões reais, com suporte a PNG e JPG; a escala base agora também é preservada durante a animação de squash/stretch.
+- **Bebidas em tamanho dobrado e Água**: todos os visuais de bebida agora têm o dobro da altura mantendo proporção; Água é a mais comum e apenas recupera 18 HP, sem efeito temporário.
+- **Tênis de Foguete reforçado**: concede grande aumento de velocidade, força e dano, mas reduz pela metade a resistência a bebidas e diminui a sorte.
+- **IA dos inimigos estabilizada**: interrompe perseguição horizontal sem alvo de salto durante quedas e mantém a rota de saída de plataformas sem a lógica anti-travamento inverter o sentido.
+- **Noia no chão e destacado**: corrigido o ponto de surgimento para alinhar os pés com o chão; nome “NOIA” acompanha o personagem acima da cabeça.
+- **Pausa durante a partida**: botão visível e atalho `P` abrem opções para continuar, reiniciar ou voltar à seleção de personagem.
+- **Efeitos de bebidas acumuláveis**: cada coleta mantém seu próprio temporizador; no Açougue, Cantinho do Vale aumenta a força progressivamente de `2×` até `10×`, com chamas e tela mais vermelha, sem efeito genérico de embriaguez.
+- **Novos upgrades substituindo cinco itens originais**: Chinês do GAB (camisa, sorte e inimigos lentos), Aliado Chiquinho Promos (mais chances de loja especial), Marmita com Ketchup Roubado, Faixa branca de jiu do Emery e Cachaça de Cobra (efeito temporário de 15s com custo de HP).
+- **Caseirinha da Casa**, a bebida mais rara, com sequência de bipes, aro dourado pulsante e aviso ao aparecer; mantém o sprite procedural até haver uma imagem própria.
+- **Sprites atuais das bebidas** em `public/drinks/`, carregados por nome de arquivo e exibidos sem distorção, com altura fixa e largura proporcional; o Chevette usa `images.jpg`; o estado das fontes/licenças está em `public/drinks/CREDITS.md`.
+- **Músicas específicas do menu e da Fase 1**: menu com *Carefree* de Kevin MacLeod e Fase 1 com *Sakura Sakura* em versão folclórica japonesa, todas registradas em `src/data/music.js` e armazenadas em `public/audio/music`.
+- **Efeito visual da embriaguez reduzido** em aproximadamente 35–40% nos parâmetros padrão de distorção, redemoinho, aberração cromática, luzes e cor.
+- **Fase 1 personalizada** em `MainScene.js`: plano de fundo real da “Role da Liberdade” e modal inicial explícito **“FASE 1 — ROLE DA LIBERDADE”** com spawn de inimigos pausado até confirmação.
+- **Retrato atualizado do Tonegi** em `public/characters/tonegi.png`, usado na seleção e no personagem em jogo.
+- **Retratos reais dos personagens** em `public/characters/`: recortes circulares de **Açougue**, **Piri** e **Tonegi**, carregados pela tela de seleção e exibidos sobre o visual animado dos personagens durante a partida.
+- **Três personagens jogáveis** em `src/data/characters.js` e `TitleScene.js`: **Açougue** (gigante, lento, resistente, força de `2×` até `10×` com *Cantinho do Vale* e aura flamejante), **Piri** (porte médio/grande, muito forte, resistente) e **Tonegi** (muito pequeno, ágil, muito forte, pouca resistência a bebidas e imunidade passiva letal contra formigas).
+- **Habilidades especiais (`[E]`/`[Q]`)** em `src/data/abilities.js`, `SpecialAbilitySystem.js`, `AbilityRuntime.js`, `AbilityVisuals.js` e `AbilityHud.js`: *Terça do Cantinho* (chuva de Cantinhos configurável), *O fit se calou* (carrega a cada 10 abates; carro rápido e invulnerável que atropela inimigos) e *Pisa ligeiro, pisa ligeiro* (Tonegi vira formiga ainda menor, rápida e invulnerável, invocando formigas auxiliares com IA própria).
+- **Pós-processamento de embriaguez** em `src/ui/DrunkEffect.js` e `src/systems/DrunkIntensity.js` usando `phaser3-rex-plugins` (`WarpPostFxPipeline` e `SwirlPostFxPipeline`), shader de aberração cromática/visão dupla e Phaser 3.90 PostFX (`Barrel`, `ColorMatrix`, `Bloom`), com nível configurável via `[N]` (`100% / 50% / 25% / OFF`) e restauração completa ao término.
+- **Física e frequência das bebidas** em `src/constants/drinks.js` e `src/entities/Drink.js`: spawn menos frequente (`16s`), queda mais rápida com gravidade real, quique em plataformas e animação *squash & stretch*.
+- **Efeitos visuais de combate** em `src/ui/EffectsManager.js`: partículas nativas (`ParticleEmitter`), rastros em arco, antecipação, tremor de câmera, `ShockwavePostFxPipeline` (`phaser3-rex-plugins`) em combos/especiais/transições e feedback distinto por categoria (`LIGHT`, `HEAVY`, `SPECIAL`, `COMBO`).
+- **Progressão em 4 Fases e 10 arquétipos de inimigos** em `src/systems/PhaseSystem.js`, `src/constants/expansion.js` e `src/data/enemies.js`: transições visuais a cada 25 abates (`0–24`, `25–49`, `50–74`, `75–99`), ajuste de atributos de inimigos já ativos e 6 novos arquétipos (*Lanceiro*, *Muralha*, *Frenético*, *Esmagador*, *Sombra*, *Senhor da Guerra*).
+- **Fase 4 — Chuva de Formigas** em `src/entities/Ant.js` e `src/systems/AntManager.js`: enxame contínuo limitado por teto de entidades, encerramento automático ao sair da Fase 4/encerrar run e interação especial com Tonegi (`SPLAT!`, zero dano e morte imediata da formiga).
+- **Trilha sonora em domínio público/CC0 e `MusicDirector`** em `src/data/music.js`, `src/audio/MusicDirector.js`, `src/audio/AudioManager.js`, `src/audio/SoundBank.js` e `public/audio/music/`: *William Tell Overture* (partida normal), *In the Hall of the Mountain King* (Mini-Chefão), *Beethoven — 5ª Sinfonia* (Boss Final Fase 1) e *Ride of the Valkyries* (Boss Final Fase 2), com crossfade, volume configurável (`[`/`]`) e sem sobreposição.
+- **Testes automatizados da expansão** em `tests/expansion.test.js` (12 testes cobrindo todos os sistemas; 66/66 testes passando).
+
 ### Fase 10 — Interface, Áudio, Tooltips e Polimento Final
 #### Correções e polimento visual (Pós-teste)
 - Diferenciados os dois personagens jogáveis em `src/data/characters.js`, `StatCalculator.js` e `PlayerState.js`: **Relâmpago Azul** (foco em Velocidade `307` e Força `12`, menor HP `90` e Resistência `0.85`) e **Colosso Laranja** (foco em HP Máximo `135` e Resistência `1.4`, Força `9.5` e Velocidade `234`), exibindo especialidade e velocidade na tela de seleção e na HUD.
@@ -62,8 +90,8 @@ O arquivo registra funcionalidades implementadas, modificações técnicas e cor
 
 ### Fase 5 — Bebidas e Efeitos Temporários
 #### Novas funcionalidades
-- Adicionados `src/constants/drinks.js` e `src/data/drinks.js` com configurações provisórias centralizadas e catálogo das 6 bebidas em ordem crescente de raridade (`Cantinho do Vale`, `Cerveja`, `Ginde 10`, `Chevette`, `Whisky com Energético`, `Absinto`).
-- Adicionado `src/systems/DrinkEffectManager.js` para cálculo centralizado de duração efetiva (registrando a resistência no momento da coleta), controle independente de timers, renovação em coletas repetidas sem duplicar modificadores, cura instantânea segura e expiração simultânea no mesmo frame.
+- Adicionados `src/constants/drinks.js` e `src/data/drinks.js` com configurações provisórias centralizadas e catálogo das 6 bebidas em ordem crescente de raridade (`Cantinho do Vale`, `Cerveja`, `Gin de 10`, `Chevette`, `Mansão Maromba`, `Absinto`).
+- Adicionado `src/systems/DrinkEffectManager.js` para cálculo centralizado de duração efetiva (registrando a resistência no momento da coleta), controle independente de timers e acúmulo de modificadores em coletas repetidas, cura instantânea segura e expiração simultânea no mesmo frame.
 - Adicionado `src/systems/DrinkSystem.js` com seleção ponderada determinística por seed (`SeededRandom`), controle de spawn, coleta idempotente e atração automática configurável preparada para expansão na Fase 6.
 - Adicionada entidade `src/entities/Drink.js` com corpo físico Arcade Physics separado do visual minimalista colorido por bebida.
 - Adicionados testes automatizados em `tests/phase5.test.js`.

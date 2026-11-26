@@ -23,22 +23,27 @@ A prioridade inicial é a qualidade da jogabilidade, não a complexidade gráfic
 
 ## 2. Personagens
 
-Existem dois personagens jogáveis.
+Existem **três personagens jogáveis** (definidos em `src/data/characters.js`), que compartilham a mesma estrutura de movimentação e combate, diferenciados por atributos configuráveis, tamanho corporal (`bodyScale`), visual-base e habilidades especiais próprias (acionadas por `E`/`Q`):
 
-Regras:
-- Ambos compartilham a mesma estrutura de movimentação e combate.
-- A aparência inicial é baseada em stick figures.
-- Cada personagem possui uma cor identificadora.
-- Cada personagem possui multiplicadores próprios de atributos.
-- Os multiplicadores devem ser aplicados aos atributos-base por meio de um sistema centralizado.
-- Não duplicar a lógica de personagem para criar diferenças entre eles.
+- **Açougue**: muito grande (`bodyScale: 1.55`), relativamente forte (`strength ×1.3`), altíssima resistência a bebidas (`drinkResistance ×1.8`), muito lento (`moveSpeed ×0.62`).
+  - *Sinergia Cantinho do Vale*: cada coleta acumula força e possui temporizador independente: 1 Cantinho = `2×`, 2 = `3×`, até o limite de `10×`. O Açougue não recebe a embriaguez visual genérica dessa bebida; suas chamas e o tom avermelhado da tela aumentam com os acúmulos.
+  - *Ataque Especial — Terça do Cantinho*: chuva exagerada e configurável de garrafas de *Cantinho do Vale* caindo do céu com confetes e animações de ativação/encerramento (não concede invulnerabilidade).
+- **Piri**: porte médio/grande (`bodyScale: 1.25`), muito forte (`strength ×1.7`), muita resistência a bebidas (`drinkResistance ×1.7`), lento (`moveSpeed ×0.78`).
+  - *Ataque Especial — O fit se calou*: carrega após derrotar **10 inimigos comuns** (1 unidade por abate). Ao ativar, transforma-se em um carro esportivo em alta velocidade, invulnerável por duração finita, avançando e atropelando tudo no caminho com partículas e feedback de impacto.
+- **Tonegi**: muito pequeno (`bodyScale: 0.72`), relativamente rápido (`moveSpeed ×1.2`), muito forte (`strength ×1.6`), pouquíssima resistência a bebidas (`drinkResistance ×0.45`).
+  - *Imunidade passiva a formigas*: imune às formigas da Fase 4 (com ou sem habilidade ativa); ao tocar Tonegi, a formiga morre imediatamente com feedback visual `SPLAT!`.
+  - *Ataque Especial — Pisa ligeiro, pisa ligeiro*: transforma-se em uma formiga ainda menor (`bodyScale ×0.55`), extremamente rápida e invulnerável por duração finita, invocando formigas auxiliares com IA própria que perseguem e atacam inimigos e são destruídas ao término da habilidade/run.
 
-Atributos:
-- HP máximo.
-- Força.
-- Resistência contra bebidas.
+Regras gerais:
+- Os multiplicadores são aplicados aos atributos-base via `StatCalculator` (sem duplicar lógica).
+- Nenhuma habilidade concede invulnerabilidade ou velocidade permanente; atributos-base nunca são contaminados por efeitos temporários.
 
-Os valores e multiplicadores exatos de cada personagem ainda precisam ser definidos. Não inventar valores definitivos sem aprovação.
+### Expansão de Combate, Bebidas, Fases, Chuva de Formigas e Trilha Sonora
+- **Efeitos de embriaguez**: pós-processamento WebGL combinando `phaser3-rex-plugins` (`WarpPostFxPipeline` + `SwirlPostFxPipeline`), aberração cromática/visão dupla, `Barrel`, `ColorMatrix` e `Bloom` do Phaser 3.90, proporcional à raridade/duração das bebidas, com redução/desligamento configurável (`[N]`) e restauração completa ao expirar.
+- **Bebidas**: spawn menos frequente (`16s`), queda mais rápida com gravidade real, quique em plataformas (`BOUNCE: 0.52`) e *squash & stretch*.
+- **Progressão em 4 Fases**: a cada 25 inimigos comuns derrotados (`0–24`, `25–49`, `50–74`, `75–99`), ocorre transição com anúncio, onda de choque, ajuste proporcional dos inimigos ativos, aumento de multiplicadores (em camada sobre a dificuldade das lojas oficiais) e desbloqueio de 10 arquétipos distintos de inimigos comuns.
+- **Fase 4 — Chuva de Formigas**: formigas pequenas, rápidas e fracas caem constantemente até o fim da Fase 4 (100 abates), com teto rígido de entidades simultâneas e imunidade letal de Tonegi.
+- **Trilha Sonora**: obras clássicas em domínio público/CC0 reproduzidas via `Howler.js` + `MusicDirector`, com faixas distintas para partida normal (*William Tell Overture*), Mini-Chefão (*In the Hall of the Mountain King*), Boss Final Fase 1 (*Beethoven — 5ª Sinfonia*) e Boss Final Fase 2 (*Cavalgada das Valquírias*), com crossfade, volume configurável (`[`/`]`) e sem sobreposição.
 
 ## 3. Atributos do jogador
 
@@ -106,6 +111,7 @@ A IA deve ser simples e eficiente:
 4. Atacar quando estiver dentro do alcance.
 5. Retomar a perseguição quando estiver distante.
 6. Evitar ficar permanentemente preso em obstáculos ou plataformas.
+7. Ao cair de uma plataforma, manter movimento horizontal estável até aterrissar; não alternar direção a cada frame.
 
 ### Quantidade simultânea
 
@@ -152,18 +158,26 @@ Os efeitos possíveis incluem:
 
 Ordem crescente de raridade:
 
-1. Cantinho do Vale
-2. Cerveja
-3. Ginde 10
-4. Chevette
-5. Whisky com Energético
-6. Absinto
+1. Água
+2. Cantinho do Vale
+3. Cerveja
+4. Gin de 10
+5. Chevette
+6. Mansão Maromba
+7. Absinto
+8. Caseirinha da Casa
+
+A Água é a bebida mais comum: recupera 18 HP instantaneamente e não aplica bônus, penalidades ou efeito temporário.
+
+Todos os sprites de bebidas são exibidos com o dobro da altura visual anterior, preservando a proporção original de cada imagem; o corpo físico de coleta permanece inalterado.
 
 As bebidas mais raras concedem maiores benefícios de força e HP, porém oferecem menor resistência contra seus efeitos de embriaguez.
 
 A raridade influencia a probabilidade de aparição e a potência dos efeitos.
 
 Os valores exatos de duração, recuperação, força e raridade devem ser configuráveis.
+
+A Caseirinha da Casa é a mais rara. Ao surgir, toca uma sequência curta de bipes e recebe um aro dourado pulsante e um aviso na tela.
 
 ### Resistência e duração
 
@@ -187,7 +201,11 @@ Requisitos:
 - Timer visível na interface.
 - Indicação dos efeitos ativos.
 
-O sistema deve suportar efeitos simultâneos ou sucessivos sem sobrescrever indevidamente os temporizadores.
+Coletas repetidas da mesma bebida acumulam modificadores em instâncias independentes, cada uma com seu próprio temporizador e expiração.
+
+### Sprites fotográficos e créditos
+
+As bebidas usam sprites em `public/drinks/`, com altura visual fixa e largura calculada pela proporção da imagem original. O estado conhecido das fontes e atribuições está em [`public/drinks/CREDITS.md`](../public/drinks/CREDITS.md).
 
 ## 8. Sistema de upgrades
 
@@ -197,7 +215,7 @@ Todos os upgrades adquiridos precisam produzir:
 1. Uma alteração mecânica real.
 2. Uma alteração visual perceptível no personagem.
 
-Os efeitos são temporários e válidos durante a run.
+Upgrades normalmente permanecem ativos durante a run; a Cachaça de Cobra é uma exceção temporária de 15 segundos.
 
 Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus valores pelo código.
 
@@ -229,8 +247,9 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
 8. Azar no Copo
    - Diminui a chance de bebidas raras.
 
-9. Ímã de Bebidas
-   - Atrai automaticamente bebidas próximas.
+9. Aliado Chiquinho Promos
+   - Aumenta em 20 pontos percentuais a chance de aparições extras do Noia.
+   - Concede um pequeno bônus de sorte.
 
 10. Corpo de Aço
     - Aumenta a resistência geral contra dano.
@@ -247,7 +266,8 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
     - Alteração visual nas pernas.
 
 13. Tênis de Foguete
-    - Aumenta a velocidade de movimento.
+    - Aumenta drasticamente a velocidade de movimento e a força/dano.
+    - Reduz pela metade a resistência contra bebidas e diminui a sorte.
     - Adiciona tênis ao personagem.
 
 14. Capacete de Obra
@@ -258,10 +278,9 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
     - Aumenta a resistência contra bebidas.
     - Adiciona máscara.
 
-16. Barriga de Chope
-    - Aumenta bastante o HP máximo.
-    - Reduz a velocidade de movimento.
-    - Altera o formato corporal.
+16. Marmita com Ketchup Roubado do Coffe Corner
+    - Aumenta o HP máximo e a defesa.
+    - Deixa os inimigos 12% mais rápidos.
 
 17. Luvas de Boxe
     - Aumenta o dano dos golpes leves.
@@ -276,9 +295,9 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
     - Reduz o dano recebido.
     - Altera visualmente os ombros.
 
-20. Chapéu da Sorte
-    - Aumenta a chance de bebidas raras.
-    - Adiciona chapéu.
+20. Chinês do GAB (São Paulo)
+    - Dá uma camisa de time, aumenta a sorte e deixa os inimigos 10% mais lentos.
+    - Reduz um pouco a velocidade e a resistência contra bebidas do jogador.
 
 21. Capa de Super-Herói
     - Aumenta a velocidade de movimento.
@@ -294,14 +313,14 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
     - Aumenta força.
     - Reduz velocidade.
 
-24. Faixa Ninja
-    - Reduz o tempo de recuperação dos golpes.
-    - Adiciona faixa.
+24. Faixa branca de jiu do Emery
+    - Aumenta força e dano, com pequena redução na velocidade dos ataques.
+    - Adiciona uma faixa branca.
 
-25. Corrente de Ouro
-    - Aumenta força.
-    - Reduz resistência contra bebidas.
-    - Adiciona corrente.
+25. Cachaça de Cobra
+    - Ativa por 15 segundos: aumenta força e velocidade.
+    - Reduz a defesa e drena 4 HP por segundo.
+    - Adiciona uma tatuagem de cobra.
 
 26. Joelheiras Blindadas
     - Reduz o knockback recebido.
@@ -330,8 +349,8 @@ Os upgrades devem ser configuráveis em catálogo de dados, sem espalhar seus va
 - Miniatura e Gigantismo devem possuir regra de incompatibilidade.
 - Braços de Gorila e luvas precisam coexistir sem conflitos visuais.
 - Tênis de Foguete e Pernas de Mola precisam coexistir.
-- Capacete de Obra e Chapéu da Sorte precisam possuir regra visual de compatibilidade.
-- Mochila de Bebidas e Ímã de Bebidas precisam funcionar simultaneamente.
+- Capacete de Obra e Coroa do Caos precisam possuir regra visual de compatibilidade.
+- Aliado Chiquinho Promos e Mochila de Bebidas podem coexistir.
 - Efeitos mecânicos e visuais devem ser tratados separadamente.
 
 O sistema visual deve permitir múltiplos acessórios simultâneos.
@@ -365,6 +384,10 @@ A loja deve:
 3. Permitir escolher apenas um.
 4. Aplicar o upgrade escolhido.
 5. Retomar a gameplay.
+
+As modais oficial e especial ocupam a tela inteira. A loja oficial usa `public/backgrounds/chiquinho-promos-shop.png` como fundo; a loja especial do Noia usa `public/backgrounds/noia-shop.png`. As imagens preservam a proporção e recebem uma camada escura para manter os cards legíveis.
+
+O upgrade Aliado Chiquinho Promos aumenta em 20 pontos percentuais a chance de cada aparição extra do Noia; a primeira aparição continua garantida e o limite da run permanece em três.
 
 O catálogo é composto pelos 30 upgrades.
 
@@ -478,6 +501,7 @@ Elementos:
 - Guia de combos.
 - Menus de loja.
 - Seleção de personagem.
+- Botão de pausa com opções para continuar, reiniciar a partida ou voltar à seleção de personagem (`P` também alterna a pausa).
 
 Tooltips devem apresentar título e explicação ao passar o mouse sobre elementos relevantes.
 

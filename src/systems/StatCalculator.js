@@ -80,12 +80,15 @@ export class StatCalculator {
     let lightDamageMultiplier = 1;
     let comboDamageMultiplier = 1;
     let attackRangeMultiplier = 1;
-    let bodyScale = 1;
+    let bodyScale = Number(characterMultipliers?.bodyScale ?? 1);
 
     let damageReduction = 0;
+    let damageTakenMultiplier = 1;
     let knockbackResistance = 0;
     let drinkRarityBonus = 0;
     let drinkMagnetBonus = 0;
+    let enemyMoveSpeedMultiplier = 1;
+    let specialShopChanceBonus = 0;
 
     for (const mod of modifiers) {
       const gp = mod?.gameplay;
@@ -122,6 +125,9 @@ export class StatCalculator {
       if (gp.damageReduction !== undefined) {
         damageReduction += Number(gp.damageReduction);
       }
+      if (gp.damageTakenMultiplier !== undefined) {
+        damageTakenMultiplier *= Number(gp.damageTakenMultiplier);
+      }
       if (gp.knockbackResistance !== undefined) {
         knockbackResistance += Number(gp.knockbackResistance);
       }
@@ -130,6 +136,12 @@ export class StatCalculator {
       }
       if (gp.drinkMagnetBonus !== undefined) {
         drinkMagnetBonus += Number(gp.drinkMagnetBonus);
+      }
+      if (gp.enemyMoveSpeedMultiplier !== undefined) {
+        enemyMoveSpeedMultiplier *= Number(gp.enemyMoveSpeedMultiplier);
+      }
+      if (gp.specialShopChanceBonus !== undefined) {
+        specialShopChanceBonus += Number(gp.specialShopChanceBonus);
       }
     }
 
@@ -196,6 +208,13 @@ export class StatCalculator {
       damageReduction: round3(
         clamp(damageReduction, 0, limits.MAX_DAMAGE_REDUCTION)
       ),
+      damageTakenMultiplier: round3(
+        clamp(
+          damageTakenMultiplier,
+          limits.MIN_DAMAGE_TAKEN_MULTIPLIER,
+          limits.MAX_DAMAGE_TAKEN_MULTIPLIER
+        )
+      ),
       knockbackResistance: round3(
         clamp(knockbackResistance, 0, limits.MAX_KNOCKBACK_RESISTANCE)
       ),
@@ -208,6 +227,16 @@ export class StatCalculator {
       ),
       drinkMagnetBonus: round3(
         clamp(drinkMagnetBonus, 0, limits.MAX_DRINK_MAGNET_BONUS)
+      ),
+      enemyMoveSpeedMultiplier: round3(
+        clamp(
+          enemyMoveSpeedMultiplier,
+          limits.MIN_ENEMY_SPEED_MULTIPLIER,
+          limits.MAX_ENEMY_SPEED_MULTIPLIER
+        )
+      ),
+      specialShopChanceBonus: round3(
+        clamp(specialShopChanceBonus, 0, limits.MAX_SPECIAL_SHOP_CHANCE_BONUS)
       ),
     };
   }

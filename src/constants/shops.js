@@ -11,7 +11,7 @@ export const SHOP_CONFIG = {
   OFFICIAL_THEME: {
     id: 'official',
     title: 'CHIQUINHO PROMOS — LOJA OFICIAL',
-    subtitle: 'Escolha 1 upgrade (aumenta a dificuldade e renova plataformas)',
+    subtitle: 'Você parou na lojinha do Chico. Escolha 1 upgrade. Ao selecionar, a próxima fase irá começar.',
     accentColor: 0x38bdf8,
     accentHex: '#38bdf8',
     panelBg: 0x0f172a,
@@ -19,8 +19,8 @@ export const SHOP_CONFIG = {
 
   SPECIAL_THEME: {
     id: 'special',
-    title: 'COQUINHO EXTRA — LOJA ESPECIAL',
-    subtitle: 'Recompensa Bônus! Escolha 1 upgrade (sem aumentar dificuldade)',
+    title: 'NOIA REVENDEDOR DO CHIQUINHO-PROMOS',
+    subtitle: 'CHIQUINHO BÔNUS: Escolha 1 upgrade.',
     accentColor: 0xfacc15,
     accentHex: '#facc15',
     panelBg: 0x1c1917,
@@ -41,7 +41,7 @@ export const SHOP_CONFIG = {
     BODY_HEIGHT: 52,
     SPAWN_OFFSET_X: 36,
     DESPAWN_MARGIN_X: 64,
-    DEFAULT_HEIGHT_ABOVE_GROUND: 52,
+    DEFAULT_HEIGHT_ABOVE_GROUND: 26,
     COLOR: 0xfacc15,
     COLOR_HEX: '#facc15',
   },

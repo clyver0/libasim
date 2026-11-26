@@ -76,7 +76,7 @@ function createMockScene() {
 
 describe('Fase 1 — Personagens, Atributos, Player e HUD', () => {
   it('define dois personagens iniciais com cor, força, HP máx, resistência e velocidade diferentes', () => {
-    expect(CHARACTERS).toHaveLength(2);
+    expect(CHARACTERS).toHaveLength(3);
     expect(CHARACTERS[0].color).not.toBe(CHARACTERS[1].color);
 
     const state1 = new PlayerState(CHARACTERS[0]);
@@ -90,12 +90,12 @@ describe('Fase 1 — Personagens, Atributos, Player e HUD', () => {
     expect(snap1.moveSpeed).not.toBe(snap2.moveSpeed);
 
     // Personagem 1 focado em velocidade/ataque; Personagem 2 focado em HP/resistência
-    expect(snap1.moveSpeed).toBeGreaterThan(snap2.moveSpeed);
-    expect(snap1.strength).toBeGreaterThan(snap2.strength);
-    expect(snap2.maxHp).toBeGreaterThan(snap1.maxHp);
-    expect(snap2.drinkResistance).toBeGreaterThan(snap1.drinkResistance);
+    expect(snap2.moveSpeed).toBeGreaterThan(snap1.moveSpeed);
+    expect(snap2.strength).toBeGreaterThan(snap1.strength);
+    expect(snap1.maxHp).toBeGreaterThan(snap2.maxHp);
+    expect(snap1.drinkResistance).toBeGreaterThan(snap2.drinkResistance);
 
-    expect(getCharacterById('character_2').id).toBe('character_2');
+    expect(getCharacterById('piri').id).toBe('piri');
     expect(getCharacterById('inexistente').id).toBe(CHARACTERS[0].id);
   });
 
@@ -126,10 +126,10 @@ describe('Fase 1 — Personagens, Atributos, Player e HUD', () => {
     const snapshot = state.getSnapshot();
 
     expect(snapshot.hp).toBe(snapshot.maxHp);
-    expect(snapshot.maxHp).toBe(135);
-    expect(snapshot.strength).toBe(9.5);
-    expect(snapshot.drinkResistance).toBe(1.4);
-    expect(snapshot.moveSpeed).toBe(Math.round(PHYSICS.PLAYER_MOVE_SPEED * 0.9));
+    expect(snapshot.maxHp).toBe(125);
+    expect(snapshot.strength).toBe(17);
+    expect(snapshot.drinkResistance).toBe(1.7);
+    expect(snapshot.moveSpeed).toBe(Math.round(PHYSICS.PLAYER_MOVE_SPEED * 0.78));
 
     const lines = formatHudLines(snapshot);
     expect(lines).toEqual([

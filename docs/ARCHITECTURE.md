@@ -144,6 +144,8 @@ Responsável pela apresentação:
 
 A interface apresenta dados e envia comandos, mas não deve ser responsável por calcular atributos ou aplicar regras de gameplay.
 
+A pausa da run é coordenada pela `MainScene`: congela física/relógio da cena e oferece continuar, reiniciar a run com o mesmo personagem ou voltar à seleção.
+
 ### utils/
 
 Funções auxiliares reutilizáveis.
@@ -205,6 +207,7 @@ Responsabilidades:
 - Ataques.
 - Combos.
 - Atalhos de interface.
+- Pausa (`P`).
 - Interações com lojas.
 
 As teclas devem ser configuráveis em um único lugar.
@@ -427,3 +430,13 @@ Entretanto:
 - Não duplicar responsabilidades.
 - Não alterar contratos de sistemas existentes sem avaliar impactos.
 - Documentar decisões arquiteturais relevantes.
+
+## 20. Módulos da Expansão de Gameplay e Audiovisual
+
+Para manter baixo acoplamento e responsabilidade única, a expansão foi estruturada em módulos independentes integrados pela `MainScene`:
+
+- **Constantes e catálogos**: `src/constants/expansion.js` (parâmetros de fases, formigas, efeitos, pós-processamento e áudio), `src/data/abilities.js`, `src/data/characters.js` (3 personagens), `src/data/enemies.js` (10 arquétipos) e `src/data/music.js` (catálogo de trilhas em domínio público).
+- **Habilidades especiais**: `src/systems/SpecialAbilitySystem.js` (máquina de estados pura: `charging` -> `ready` -> `active`), `src/systems/AbilityRuntime.js` (execução de chuva de Cantinhos, atropelamento do carro e formigas auxiliares) e `src/ui/AbilityVisuals.js` / `src/ui/AbilityHud.js`.
+- **Progressão em 4 Fases e Formigas**: `src/systems/PhaseSystem.js` (transições a cada 25 abates e escalonamento em camada sobre `DifficultySystem`), `src/entities/Ant.js` e `src/systems/AntManager.js` (chuva hostil da Fase 4 com imunidade de Tonegi + formigas auxiliares).
+- **Efeitos Visuais e Pós-Processamento**: `src/systems/DrunkIntensity.js` (cálculo puro 0..1), `src/ui/DrunkEffect.js` (`phaser3-rex-plugins` `WarpPostFxPipeline` + `SwirlPostFxPipeline` + aberração cromática/visão dupla + Phaser 3.90 PostFX nativo) e `src/ui/EffectsManager.js` (`ParticleEmitter` nativo + `ShockwavePostFxPipeline` + câmera/tweens).
+- **Direção Musical**: `src/audio/MusicDirector.js` sobre `src/audio/AudioManager.js` (`Howler.js`), com troca sincronizada por boss/fase, fade sem sobreposição e volume configurável.

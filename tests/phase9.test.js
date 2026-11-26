@@ -217,7 +217,7 @@ describe('Fase 9 — Boss Final, RunManager e Encerramento da Run', () => {
       defeatedEnemies: 100,
       officialShopsVisited: 3,
       specialShopsVisited: 1,
-      acquiredUpgrades: ['Soco de Aço', 'Pernas de Mola', 'Capacete de Obra', 'Faixa Ninja'],
+      acquiredUpgrades: ['Soco de Aço', 'Pernas de Mola', 'Capacete de Obra', 'Faixa branca de jiu do Emery'],
     });
     run.markBossSpawned(1);
     run.setBossPhase(2);

@@ -20,8 +20,15 @@ export const UPGRADE_CONFIG = {
     MAX_RANGE_MULTIPLIER: 2.2,
     MAX_DAMAGE_REDUCTION: 0.75,
     MAX_KNOCKBACK_RESISTANCE: 0.85,
-    MIN_BODY_SCALE: 0.65,
-    MAX_BODY_SCALE: 1.45,
+    MIN_DAMAGE_TAKEN_MULTIPLIER: 0.5,
+    MAX_DAMAGE_TAKEN_MULTIPLIER: 2.5,
+    MIN_ENEMY_SPEED_MULTIPLIER: 0.6,
+    MAX_ENEMY_SPEED_MULTIPLIER: 1.5,
+    MAX_SPECIAL_SHOP_CHANCE_BONUS: 0.45,
+    // Limites ampliados na Expansão: personagens têm tamanho próprio (Tonegi ~0.72, Açougue ~1.55)
+    // e a habilidade do Tonegi encolhe ainda mais.
+    MIN_BODY_SCALE: 0.3,
+    MAX_BODY_SCALE: 2.0,
     MIN_DRINK_RARITY_BONUS: -0.8,
     MAX_DRINK_RARITY_BONUS: 3.0,
     MAX_DRINK_MAGNET_BONUS: 420,

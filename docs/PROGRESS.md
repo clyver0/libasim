@@ -122,7 +122,7 @@ Status: Implementada (validação visual manual no navegador pendente).
 - [x] Implementar atração automática.
 
 Registro da Fase 5:
-- **Implementado:** `src/constants/drinks.js` e `src/data/drinks.js` (catálogo configurável provisório das 6 bebidas em ordem crescente de raridade: `Cantinho do Vale`, `Cerveja`, `Ginde 10`, `Chevette`, `Whisky com Energético` e `Absinto`); `src/systems/DrinkEffectManager.js` (cálculo centralizado de duração efetiva usando a resistência registrada no momento da coleta, temporizadores independentes, renovação de timer em coletas repetidas sem duplicar modificadores, cura instantânea em cada coleta sem reviver jogador morto, expiração simultânea no mesmo frame e limpeza total ao encerrar/morrer); `src/systems/DrinkSystem.js` (sorteio ponderado determinístico por seed via `SeededRandom`, agendamento de spawn, coleta idempotente e atração automática com raio inicial configurável + `extraRadius` preparado para a Fase 6); `src/entities/Drink.js` (entidade física Arcade Physics + visual minimalista colorido por bebida); integração em `PlayerState.js` (`heal` e `setActiveEffects`), `Player.js` (aura colorida de efeito ativo), `Hud.js` (`formatActiveEffects` com timers restantes) e `MainScene.js` (spawn, queda, overlap de coleta, atração e limpeza em morte/shutdown).
+- **Implementado:** `src/constants/drinks.js` e `src/data/drinks.js` (catálogo configurável provisório das 6 bebidas em ordem crescente de raridade: `Cantinho do Vale`, `Cerveja`, `Gin de 10`, `Chevette`, `Mansão Maromba` e `Absinto`); `src/systems/DrinkEffectManager.js` (cálculo centralizado de duração efetiva usando a resistência registrada no momento da coleta, temporizadores independentes e modificadores acumuláveis em coletas repetidas, cura instantânea em cada coleta sem reviver jogador morto, expiração simultânea no mesmo frame e limpeza total ao encerrar/morrer); `src/systems/DrinkSystem.js` (sorteio ponderado determinístico por seed via `SeededRandom`, agendamento de spawn, coleta idempotente e atração automática com raio inicial configurável + `extraRadius` preparado para a Fase 6); `src/entities/Drink.js` (entidade física Arcade Physics + sprites fotográficos com fallback procedural); integração em `PlayerState.js` (`heal` e `setActiveEffects`), `Player.js` (aura colorida de efeito ativo), `Hud.js` (`formatActiveEffects` com timers restantes) e `MainScene.js` (pré-carregamento dos sprites, spawn, queda, overlap de coleta, atração e limpeza em morte/shutdown).
 - **Testes realizados:** `npm test` com Vitest (`6` arquivos / `34` testes aprovados, incluindo `8` novos testes em `tests/phase5.test.js`) e `npm run build` com Vite concluído sem erros (`42` módulos transformados).
 - **Problemas conhecidos:** Nenhum erro de código, teste ou build; a validação visual automatizada no navegador falhou porque o Chrome/DevTools local não possui `DevToolsActivePort` ativo (`C:\Users\leona\AppData\Local\Google\Chrome\User Data\DevToolsActivePort`), mantendo pendente a validação visual manual com `npm run dev`.
 - **Próxima tarefa:** Após validação visual manual no navegador pelo usuário e aprovação, planejar a **Fase 6 — Sistema de upgrades**.
@@ -233,6 +233,12 @@ Status: Implementada (validação visual manual no navegador pendente).
 - [x] Ajustar balanceamento.
 - [x] Realizar testes de regressão.
 - [x] Otimizar desempenho.
+- [x] Adicionar rostos reais aos personagens.
+- [x] Personalizar o plano de fundo da Fase 1.
+- [x] Criar modal inicial da Fase 1 com pausa antes dos inimigos.
+- [x] Trocar a música do menu por uma faixa específica.
+- [x] Adicionar música japonesa na Fase 1.
+- [x] Reduzir o efeito visual da embriaguez.
 
 Registro da Fase 10:
 - **Implementado:** diferenciação completa de atributos e velocidade dos dois personagens (`Relâmpago Azul` vs `Colosso Laranja`), catálogo de `4` arquétipos distintos de inimigos comuns e **Mini-Chefão aos 50 inimigos derrotados** (`Leão de Chácara`) com drop de bebida rara; `src/ui/Tooltip.js` (tooltips com título e explicação e clamp nas bordas da tela em HUD, tela inicial e lojas); `src/audio/SoundBank.js` e expansão de `src/audio/AudioManager.js` (efeitos sonoros e loop musical sintetizados em WAV PCM em memória via Howler.js, com atalho `[M]` de mute); `src/utils/display.js` (tela fixa `960x540` centralizada sem esticamento CSS e com textos em alta densidade); `src/ui/ArenaBackdrop.js` (cenário urbano noturno ilustrado, chão e plataformas suspensas estilizadas com iluminação por estágio e arcos energéticos de golpe substituindo hitboxes de debug); refinamento visual completo dos personagens, inimigos, bebidas e interfaces (`TitleScene.js`, `Hud.js`, `ShopUI.js`, `ComboGuide.js`, `VictoryScene.js`, `GameOverScene.js`, `MainScene.js`); correção definitiva em `CombatSystem.js` e `Player.js` para impedir travamento em `RECOVERING` órfão quando uma loja abre durante um golpe ativo.
@@ -242,6 +248,48 @@ Registro da Fase 10:
 
 Critério de conclusão:
 O jogo apresenta uma experiência completa e consistente do início ao fim.
+
+## Expansão — Personagens, Habilidades, Inimigos, Efeitos Visuais e Áudio
+
+Status: Implementada e validada (testes automatizados, build e inicialização no navegador).
+
+- [x] Pesquisar, avaliar e integrar bibliotecas (`phaser3-rex-plugins` + recursos nativos do Phaser 3.90 + `Howler.js`).
+- [x] Implementar os três personagens jogáveis (**Açougue**, **Piri**, **Tonegi**) com atributos, tamanhos, visuais e sinergia de *Cantinho do Vale* no Açougue (`2×` a `10×`).
+- [x] Implementar as três habilidades especiais (**Terça do Cantinho**, **O fit se calou** com carga de 10 abates, **Pisa ligeiro, pisa ligeiro** com formigas auxiliares).
+- [x] Implementar pós-processamento exagerado de embriaguez (`Warp` + `Swirl` + aberração cromática/visão dupla + `Barrel`/`ColorMatrix`/`Bloom`) com ajuste configurável (`[N]`) e restauração completa.
+- [x] Reduzir frequência de spawn das bebidas, acelerar queda e implementar física de quique com *squash & stretch*.
+- [x] Aprimorar efeitos visuais de ataques (partículas, rastros, antecipação, `Shockwave` WebGL em combos/especiais e tremor de câmera).
+- [x] Implementar progressão em 4 fases (a cada 25 abates), ajuste de inimigos existentes e 10 arquétipos distintos de inimigos comuns.
+- [x] Implementar Fase 4 — Chuva de Formigas com teto de entidades e imunidade letal de Tonegi (`SPLAT!`).
+- [x] Pesquisar, baixar e integrar músicas clássicas em domínio público/CC0 com `MusicDirector` (trilha normal + músicas distintas para Mini-Chefão e Fases 1 e 2 do Boss Final).
+- [x] Atualizar documentação oficial e criar testes abrangentes (`tests/expansion.test.js`).
+
+Registro da Expansão:
+- **Implementado:** `src/constants/expansion.js`, `src/data/abilities.js`, `src/data/music.js`, `src/systems/SpecialAbilitySystem.js`, `src/systems/AbilityRuntime.js`, `src/systems/PhaseSystem.js`, `src/systems/DrunkIntensity.js`, `src/entities/Ant.js`, `src/systems/AntManager.js`, `src/ui/AbilityVisuals.js`, `src/ui/AbilityHud.js`, `src/ui/DrunkEffect.js`, `src/ui/EffectsManager.js`, `src/audio/MusicDirector.js`, 4 faixas em domínio público em `public/audio/music/` (+ `CREDITS.md`) e integração completa em `MainScene.js`, `TitleScene.js`, `Player.js`, `PlayerState.js`, `Drink.js`, `DrinkEffectManager.js`, `AudioManager.js`, `SoundBank.js`, `characters.js` e `enemies.js`.
+- **Testes realizados:** `npm test` com Vitest (`12` arquivos / `66` testes aprovados, incluindo 12 novos testes dedicados em `tests/expansion.test.js`) e `npm run build` com Vite concluído sem erros (`91` módulos, 3 chunks *lazy* de shaders do `phaser3-rex-plugins` somando `2,75 kB` gzip).
+- **Problemas conhecidos:** Nenhum erro de teste ou build; o usuário assumiu a aba do navegador durante a validação visual em `http://localhost:5175/`, restando validação jogável completa de áudio/efeitos em tempo real pelo usuário.
+- **Próxima tarefa:** Feedback manual do jogador sobre balanceamento fino (velocidades, cooldowns e intensidade da embriaguez) durante partidas completas.
+
+## Atualização — acúmulo e sprites das bebidas
+
+- **Implementado:** efeitos repetidos acumulam com temporizadores independentes; a sinergia do Açougue sobe de `2×` a `10×`, com chamas e overlay vermelho progressivos; sprites preservam a proporção original com altura fixa; arte da loja oficial adicionada.
+- **Testes:** `npm test -- --run tests/phase5.test.js tests/expansion.test.js tests/phase8.test.js` (26 testes aprovados); `npm run build` concluído com 91 módulos e assets presentes em `dist/`.
+- **Limitação:** as fontes/licenças das fotos substituídas não foram registradas; a validação visual no navegador ainda está pendente. O build também reporta o bundle principal acima de 500 kB.
+- **Próxima tarefa:** validar a apresentação da arte da loja e dos sprites durante uma partida.
+- **Correção adicional:** mantida a escala proporcional do sprite da bebida durante a sincronização visual; `npm test -- --run tests/expansion.test.js` passou (14 testes).
+
+## Atualização — lojas em tela cheia, upgrades e bebida especial
+
+- **Implementado:** as modais oficial e do Noia agora ocupam a tela inteira e usam, respectivamente, o fundo do Chiquinho e a nova imagem fornecida. Cinco upgrades originais foram substituídos; bônus de sorte/velocidade dos inimigos e aparição do Noia estão integrados aos sistemas existentes. A Cachaça de Cobra ativa um efeito de 15 segundos com perda gradual de HP. A Caseirinha da Casa é a mais rara e recebe bipes, aro pulsante e aviso visual ao surgir.
+- **Testes:** `npm test` — 12 arquivos e 72 testes aprovados. `npm run build` concluído com 91 módulos; sem erros.
+- **Limitação:** a Caseirinha usa o sprite procedural atual até receber uma imagem própria. Ainda falta validar visualmente as modais e o efeito durante uma partida no navegador.
+
+## Atualização — bebidas maiores, Água, IA e pausa
+
+- **Implementado:** altura visual de todas as bebidas dobrada com proporção preservada; Água adicionada como bebida mais comum e de cura instantânea. Tênis de Foguete reforçado com velocidade e força altas, custo de resistência e sorte. IA não oscila durante quedas; Noia surge alinhado ao chão e exibe o nome; menu de pausa oferece continuar, reiniciar ou retornar à seleção.
+- **Pausa:** botão e atalho `P` confirmados no navegador; o menu oferece continuar, reiniciar e retornar à seleção. `ESC` não é anunciado como atalho porque não foi reconhecido de forma consistente durante a validação visual.
+- **Testes:** `npm test` — 12 arquivos e 74 testes aprovados.
+- **Build e diff:** `npm run build` concluído com 91 módulos; `git diff --check` sem erros.
 
 ## Regras de atualização
 

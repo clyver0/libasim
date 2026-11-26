@@ -9,6 +9,9 @@ function cloneModifiers(modifiers = {}) {
   if (modifiers?.multiplier) {
     cloned.multiplier = { ...modifiers.multiplier };
   }
+  if (modifiers?.gameplay) {
+    cloned.gameplay = { ...modifiers.gameplay };
+  }
   return cloned;
 }
 
@@ -18,7 +21,7 @@ function cloneModifiers(modifiers = {}) {
  * Responsabilidades:
  * - Calcular duração efetiva a partir da resistência registrada no momento da coleta.
  * - Manter temporizadores independentes por bebida.
- * - Renovar o timer em coletas repetidas da mesma bebida sem duplicar modificadores.
+ * - Manter uma instância e um temporizador independentes para cada coleta.
  * - Aplicar cura instantânea em cada coleta (sem nunca reviver jogador morto).
  * - Expirar e remover múltiplos efeitos corretamente no mesmo frame.
  * - Sincronizar modificadores com PlayerState sem mutar atributos-base.
@@ -35,6 +38,7 @@ export class DrinkEffectManager {
    * Duração efetiva = duração-base × multiplicador da bebida ÷ resistência efetiva do personagem
    */
   calculateEffectiveDuration(drink, drinkResistance) {
+    const durationOverride = drink?.durationOverrideMs;
     const baseDuration = Number(
       drink?.baseDurationMs ?? this.config.BASE_DURATION_MS
     );
@@ -45,7 +49,10 @@ export class DrinkEffectManager {
       Number(drinkResistance ?? 1)
     );
 
-    const rawDuration = (baseDuration * multiplier) / effectiveResistance;
+    const rawDuration =
+      typeof durationOverride === 'number' && Number.isFinite(durationOverride)
+        ? durationOverride
+        : (baseDuration * multiplier) / effectiveResistance;
     const clamped = Math.min(
       this.config.MAX_EFFECTIVE_DURATION_MS,
       Math.max(this.config.MIN_EFFECTIVE_DURATION_MS, rawDuration)
@@ -65,40 +72,65 @@ export class DrinkEffectManager {
       minResistance,
       Number(playerState.effectiveStats?.drinkResistance ?? 1)
     );
+    if (drink.instantOnly) {
+      return {
+        effect: null,
+        refreshed: false,
+        stackCount: 0,
+        healedAmount:
+          typeof drink.instantHeal === 'number' && drink.instantHeal > 0
+            ? playerState.heal(drink.instantHeal)
+            : 0,
+        resistanceAtCollection,
+      };
+    }
+
     const durationMs = this.calculateEffectiveDuration(
       drink,
       resistanceAtCollection
     );
 
-    const existing = this.activeEffects.find(
-      (effect) => effect.drinkId === drink.id
-    );
+    const appliedEffect = {
+      instanceId: `drink-effect-${this.nextInstanceId++}`,
+      drinkId: drink.id,
+      name: drink.name,
+      color: drink.color,
+      colorHex: drink.colorHex,
+      durationMs,
+      remainingMs: durationMs,
+      resistanceAtCollection,
+      modifiers: cloneModifiers(drink.modifiers),
+      effectSummary:
+        drink.effectSummary ?? describeDrinkModifiers(drink.modifiers),
+      healthDrainPerSecond: Math.max(
+        0,
+        Number(drink.healthDrainPerSecond ?? 0)
+      ),
+      healthDrainRemainder: 0,
+      synergy: false,
+      synergyMultiplierPerStack: null,
+      synergyMaxStacks: null,
+    };
 
-    let appliedEffect;
-    let refreshed = false;
-
-    if (existing) {
-      // Opção A aprovada: renovar timer sem duplicar modificadores
-      existing.durationMs = durationMs;
-      existing.remainingMs = durationMs;
-      existing.resistanceAtCollection = resistanceAtCollection;
-      appliedEffect = existing;
-      refreshed = true;
-    } else {
-      appliedEffect = {
-        instanceId: `drink-effect-${this.nextInstanceId++}`,
-        drinkId: drink.id,
-        name: drink.name,
-        color: drink.color,
-        colorHex: drink.colorHex,
-        durationMs,
-        remainingMs: durationMs,
-        resistanceAtCollection,
-        modifiers: cloneModifiers(drink.modifiers),
-        effectSummary: describeDrinkModifiers(drink.modifiers),
-      };
-      this.activeEffects.push(appliedEffect);
+    const synergy = playerState.drinkSynergies?.[drink.id];
+    if (synergy) {
+      if (synergy.flat) {
+        appliedEffect.modifiers.flat = {
+          ...(appliedEffect.modifiers.flat ?? {}),
+          ...synergy.flat,
+        };
+      }
+      if (synergy.multiplier) {
+        appliedEffect.modifiers.multiplier = {
+          ...(appliedEffect.modifiers.multiplier ?? {}),
+          ...synergy.multiplier,
+        };
+      }
+      appliedEffect.synergy = true;
+      appliedEffect.synergyMultiplierPerStack = synergy.multiplierPerStack ?? null;
+      appliedEffect.synergyMaxStacks = synergy.maxStacks ?? null;
     }
+    this.activeEffects.push(appliedEffect);
 
     // Sincroniza modificadores com o PlayerState (recalcula maxHp, strength e drinkResistance)
     playerState.setActiveEffects(this.getActiveModifiers());
@@ -111,7 +143,8 @@ export class DrinkEffectManager {
 
     return {
       effect: { ...appliedEffect, modifiers: cloneModifiers(appliedEffect.modifiers) },
-      refreshed,
+      refreshed: false,
+      stackCount: this.activeEffects.filter((effect) => effect.drinkId === drink.id).length,
       healedAmount,
       resistanceAtCollection,
     };
@@ -130,7 +163,17 @@ export class DrinkEffectManager {
     const remaining = [];
 
     for (const effect of this.activeEffects) {
+      const activeDeltaMs = Math.min(deltaMs, effect.remainingMs);
       effect.remainingMs = Math.max(0, effect.remainingMs - deltaMs);
+      if (effect.healthDrainPerSecond > 0 && !playerState?.isDead?.()) {
+        effect.healthDrainRemainder +=
+          (effect.healthDrainPerSecond * activeDeltaMs) / 1000;
+        const damage = Math.floor(effect.healthDrainRemainder);
+        if (damage > 0) {
+          playerState?.applyDamage?.(damage);
+          effect.healthDrainRemainder -= damage;
+        }
+      }
       if (effect.remainingMs <= 0) {
         expired.push(effect);
       } else {
@@ -155,7 +198,32 @@ export class DrinkEffectManager {
   }
 
   getActiveModifiers() {
-    return this.activeEffects.map((effect) => effect.modifiers);
+    const modifiers = this.activeEffects.map((effect) => effect.modifiers);
+    const synergyStacks = new Map();
+
+    for (const effect of this.activeEffects) {
+      if (!effect.synergy || !effect.synergyMultiplierPerStack) continue;
+      const current = synergyStacks.get(effect.drinkId) ?? {
+        count: 0,
+        maxStacks: effect.synergyMaxStacks,
+        multiplierPerStack: effect.synergyMultiplierPerStack,
+      };
+      current.count += 1;
+      synergyStacks.set(effect.drinkId, current);
+    }
+
+    for (const { count, maxStacks, multiplierPerStack } of synergyStacks.values()) {
+      const stacks = Number.isFinite(maxStacks)
+        ? Math.min(count, Math.max(0, maxStacks))
+        : count;
+      const multiplier = {};
+      for (const [stat, amount] of Object.entries(multiplierPerStack)) {
+        multiplier[stat] = 1 + stacks * Number(amount);
+      }
+      modifiers.push({ multiplier });
+    }
+
+    return modifiers;
   }
 
   getActiveEffects() {
@@ -168,6 +236,7 @@ export class DrinkEffectManager {
       durationMs: effect.durationMs,
       remainingMs: effect.remainingMs,
       resistanceAtCollection: effect.resistanceAtCollection,
+      synergy: Boolean(effect.synergy),
       effectSummary:
         effect.effectSummary ?? describeDrinkModifiers(effect.modifiers),
     }));

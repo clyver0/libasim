@@ -3,6 +3,7 @@ import { DamageCalculator } from '../src/combat/DamageCalculator.js';
 import { DRINK_CONFIG } from '../src/constants/drinks.js';
 import { getCharacterById } from '../src/data/characters.js';
 import { DRINKS, getDrinkById } from '../src/data/drinks.js';
+import { getUpgradeById } from '../src/data/upgrades.js';
 import { PlayerState } from '../src/entities/PlayerState.js';
 import { DrinkEffectManager } from '../src/systems/DrinkEffectManager.js';
 import { DrinkSystem } from '../src/systems/DrinkSystem.js';
@@ -14,21 +15,41 @@ function createPlayerState() {
 }
 
 describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
-  it('mantém catálogo com as 6 bebidas em ordem crescente de raridade e pesos decrescentes', () => {
-    expect(DRINKS).toHaveLength(6);
+  it('mantém catálogo com as 8 bebidas em ordem crescente de raridade e pesos decrescentes', () => {
+    expect(DRINKS).toHaveLength(8);
     expect(DRINKS.map((d) => d.name)).toEqual([
+      'Água',
       'Cantinho do Vale',
       'Cerveja',
-      'Ginde 10',
+      'Gin de 10',
       'Chevette',
-      'Whisky com Energético',
+      'Mansão Maromba',
       'Absinto',
+      'Caseirinha da Casa',
     ]);
+    expect(DRINKS[7].isSpecial).toBe(true);
+    expect(DRINKS[7].rarityWeight).toBeLessThan(DRINKS[6].rarityWeight);
 
     for (let i = 1; i < DRINKS.length; i += 1) {
       expect(DRINKS[i].rarityRank).toBeGreaterThan(DRINKS[i - 1].rarityRank);
       expect(DRINKS[i].rarityWeight).toBeLessThan(DRINKS[i - 1].rarityWeight);
     }
+  });
+
+  it('faz Água curar instantaneamente sem conceder efeito temporário ou alterar atributos', () => {
+    const playerState = createPlayerState();
+    const manager = new DrinkEffectManager();
+    const statsBefore = { ...playerState.effectiveStats };
+    playerState.applyDamage(30);
+    const hpBefore = playerState.currentHp;
+
+    const result = manager.applyDrink(getDrinkById('agua'), playerState);
+
+    expect(result.effect).toBeNull();
+    expect(result.healedAmount).toBe(18);
+    expect(playerState.currentHp).toBe(hpBefore + 18);
+    expect(playerState.effectiveStats).toEqual(statsBefore);
+    expect(manager.hasActiveEffects()).toBe(false);
   });
 
   it('sorteia bebidas de forma determinística por seed e respeita distribuição de raridade', () => {
@@ -65,6 +86,49 @@ describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
     expect(lowResDuration).toBeGreaterThan(normalDuration);
     expect(clampedMin).toBe(DRINK_CONFIG.MIN_EFFECTIVE_DURATION_MS);
     expect(clampedMax).toBe(DRINK_CONFIG.MAX_EFFECTIVE_DURATION_MS);
+  });
+
+  it('aplica Cachaça de Cobra por 15 segundos, drenando vida e restaurando os bônus ao expirar', () => {
+    const playerState = createPlayerState();
+    const manager = new DrinkEffectManager();
+    const baseStrength = playerState.effectiveStats.strength;
+    const baseSpeed = playerState.gameplayModifiers.moveSpeedMultiplier;
+    const baseHp = playerState.currentHp;
+    const effectData = getUpgradeById('cachaca_de_cobra').temporaryDrinkEffect;
+    const applied = manager.applyDrink(
+      {
+        ...effectData,
+        id: 'cachaca_de_cobra_effect',
+        name: 'Cachaça de Cobra',
+      },
+      playerState
+    );
+
+    expect(applied.effect.durationMs).toBe(15000);
+    expect(playerState.effectiveStats.strength).toBeGreaterThan(baseStrength);
+    expect(playerState.gameplayModifiers.moveSpeedMultiplier).toBeGreaterThan(
+      baseSpeed
+    );
+    expect(playerState.gameplayModifiers.damageTakenMultiplier).toBe(1.2);
+    const normalIncomingDamage = DamageCalculator.calculateDamage({
+      attack: { baseDamage: 10, isCombo: false },
+      attackerStats: { strength: 10 },
+    });
+    const increasedIncomingDamage = DamageCalculator.calculateDamage({
+      attack: { baseDamage: 10, isCombo: false },
+      attackerStats: { strength: 10 },
+      targetStats: playerState.getCombatStats(),
+    });
+    expect(increasedIncomingDamage).toBeGreaterThan(normalIncomingDamage);
+
+    manager.update(5000, playerState);
+    expect(playerState.currentHp).toBe(baseHp - 20);
+    manager.update(10000, playerState);
+    expect(manager.hasActiveEffects()).toBe(false);
+    expect(playerState.currentHp).toBe(baseHp - 60);
+    expect(playerState.effectiveStats.strength).toBe(baseStrength);
+    expect(playerState.gameplayModifiers.moveSpeedMultiplier).toBe(baseSpeed);
+    expect(playerState.gameplayModifiers.damageTakenMultiplier).toBe(1);
   });
 
   it('aplica força, maxHp, resistência e cura instantânea e restaura atributos originais ao expirar', () => {
@@ -124,7 +188,7 @@ describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
     expect(playerState.isDead()).toBe(true);
   });
 
-  it('renova o timer de bebida repetida sem duplicar modificadores e aplica cura novamente', () => {
+  it('acumula bebidas repetidas em instâncias independentes e aplica cura em cada coleta', () => {
     const playerState = createPlayerState();
     const manager = new DrinkEffectManager();
     const chevette = getDrinkById('chevette');
@@ -139,13 +203,22 @@ describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
     const hpBeforeSecond = playerState.currentHp;
 
     const second = manager.applyDrink(chevette, playerState);
-    expect(second.refreshed).toBe(true);
-    expect(manager.getActiveEffects()).toHaveLength(1);
-    expect(playerState.effectiveStats.strength).toBe(strengthAfterFirst);
-    expect(playerState.effectiveStats.maxHp).toBe(maxHpAfterFirst);
+    expect(second.refreshed).toBe(false);
+    expect(manager.getActiveEffects()).toHaveLength(2);
+    expect(playerState.effectiveStats.strength).toBeGreaterThan(strengthAfterFirst);
+    expect(playerState.effectiveStats.maxHp).toBeGreaterThan(maxHpAfterFirst);
     expect(second.healedAmount).toBeGreaterThan(0);
     expect(playerState.currentHp).toBeGreaterThan(hpBeforeSecond);
-    expect(second.effect.remainingMs).toBeGreaterThan(first.effect.durationMs - 3000);
+    expect(second.effect.remainingMs).toBeGreaterThan(first.effect.durationMs);
+
+    const firstStackRemainingMs = manager.getActiveEffects()[0].remainingMs;
+    manager.update(firstStackRemainingMs, playerState);
+    const activeAfterFirstExpired = manager.getActiveEffects();
+    expect(activeAfterFirstExpired).toHaveLength(1);
+    expect(activeAfterFirstExpired[0].instanceId).toBe(second.effect.instanceId);
+    expect(activeAfterFirstExpired[0].remainingMs).toBe(
+      second.effect.durationMs - firstStackRemainingMs
+    );
   });
 
   it('suporta efeitos simultâneos independentes e expira múltiplos efeitos corretamente no mesmo frame', () => {
@@ -182,7 +255,7 @@ describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
 
     const drinkEntity = {
       id: 'drink-1',
-      drinkData: getDrinkById('ginde_10'),
+      drinkData: getDrinkById('gin_de_10'),
       collected: false,
       destroyed: false,
       onCollected: () => {},
@@ -218,7 +291,7 @@ describe('Fase 5 — Bebidas e Efeitos Temporários', () => {
     // Formatação da HUD
     const lines = formatActiveEffects(manager.getActiveEffects());
     expect(lines).toHaveLength(1);
-    expect(lines[0]).toContain('Ginde 10:');
+    expect(lines[0]).toContain('Gin de 10:');
     expect(lines[0]).toMatch(/s$/);
 
     // Limpeza total ao encerrar/reiniciar run

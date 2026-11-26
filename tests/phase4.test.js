@@ -285,6 +285,15 @@ describe('Fase 4 — Inimigos, IA, Spawn e Progressão de Dificuldade', () => {
     enemy.body.x = reachablePlatform.x - 12 + firstDropDir * 10;
     const dropIntent2 = ai.decide(enemy, player, layout, [enemy], 16);
     expect(Math.sign(dropIntent2.moveDir)).toBe(firstDropDir);
+
+    // Ao sair da borda, a IA para de inverter o sentido durante a queda.
+    enemy.body.blocked.down = false;
+    enemy.body.touching.down = false;
+    const fallingIntent1 = ai.decide(enemy, player, layout, [enemy], 16);
+    player.body.x = 800;
+    const fallingIntent2 = ai.decide(enemy, player, layout, [enemy], 16);
+    expect(fallingIntent1.moveDir).toBe(0);
+    expect(fallingIntent2.moveDir).toBe(0);
   });
 
   it('controla spawn no topo, evasão do jogador, limites simultâneos e parada após 100 derrotas', () => {
@@ -402,7 +411,7 @@ describe('Fase 4 — Inimigos, IA, Spawn e Progressão de Dificuldade', () => {
     expect(state.moveSpeed).toBe(level1.scaledStats.moveSpeed);
 
     // Catálogo base permanece intacto
-    expect(baseData.baseStats.maxHp).toBe(45);
+    expect(baseData.baseStats.maxHp).toBe(56);
 
     // Instanciar Enemy diretamente com scaledData aplica scaledStats sem precisar repassar opção separada
     const scene = createMockScene();

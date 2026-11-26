@@ -539,7 +539,7 @@ export class CharacterAppearanceSystem {
       );
     }
 
-    // 4. Corpo de Aço (#10) e Barriga de Chope (#16)
+    // 4. Corpo de Aço (#10) e Marmita (#16)
     if (active.has('steel_body')) {
       graphics.lineStyle(7.2, 0x94a3b8, 0.65);
       graphics.lineBetween(skel.neck.x, skel.neck.y, skel.hip.x, skel.hip.y);
@@ -563,6 +563,68 @@ export class CharacterAppearanceSystem {
     graphics.fillStyle(color, 1);
     graphics.fillCircle(skel.shoulder.x, skel.shoulder.y, torsoW * 0.55);
     graphics.fillCircle(skel.hip.x, skel.hip.y, torsoW * 0.55);
+
+    if (active.has('team_jersey')) {
+      graphics.lineStyle(9, 0x1d4ed8, 0.98);
+      graphics.lineBetween(
+        skel.neck.x,
+        skel.neck.y + 3,
+        skel.hip.x,
+        skel.hip.y - 2
+      );
+      graphics.lineStyle(2, 0xf8fafc, 0.95);
+      graphics.lineBetween(
+        skel.neck.x + 2,
+        skel.neck.y + 5,
+        skel.hip.x + 2,
+        skel.hip.y - 4
+      );
+    }
+
+    if (active.has('promo_badge')) {
+      graphics.fillStyle(0xfacc15, 1);
+      graphics.fillCircle(skel.shoulder.x + dir * 4, skel.shoulder.y + 4, 4);
+      graphics.lineStyle(1.5, 0x78350f, 1);
+      graphics.strokeCircle(skel.shoulder.x + dir * 4, skel.shoulder.y + 4, 4);
+    }
+
+    if (active.has('white_jiu_belt')) {
+      graphics.lineStyle(4.5, 0xf8fafc, 1);
+      graphics.lineBetween(
+        skel.hip.x - 7,
+        skel.hip.y - 2,
+        skel.hip.x + 7,
+        skel.hip.y - 2
+      );
+      graphics.lineBetween(
+        skel.hip.x + 2,
+        skel.hip.y - 2,
+        skel.hip.x + 5,
+        skel.hip.y + 3
+      );
+    }
+
+    if (active.has('snake_tattoo')) {
+      graphics.lineStyle(2, 0x84cc16, 1);
+      graphics.lineBetween(
+        skel.shoulder.x - 3,
+        skel.shoulder.y + 2,
+        skel.shoulder.x + 2,
+        skel.shoulder.y + 4
+      );
+      graphics.lineBetween(
+        skel.shoulder.x + 2,
+        skel.shoulder.y + 4,
+        skel.shoulder.x - 1,
+        skel.shoulder.y + 6
+      );
+      graphics.lineBetween(
+        skel.shoulder.x - 1,
+        skel.shoulder.y + 6,
+        skel.shoulder.x + 4,
+        skel.shoulder.y + 8
+      );
+    }
 
     graphics.fillStyle(0x020617, 0.96);
     graphics.fillCircle(skel.head.x, skel.head.y, skel.headRadius + 1.8);
@@ -713,7 +775,7 @@ export class CharacterAppearanceSystem {
       }
     }
 
-    // 9. Ímã de Bebidas (#9)
+    // Visual legado do Ímã de Bebidas
     if (active.has('drink_magnet')) {
       const mx = skel.hip.x + dir * 9;
       const my = skel.hip.y - 1;

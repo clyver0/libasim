@@ -111,8 +111,8 @@ describe('Fase 7 — CharacterAppearanceSystem e Aparência dos Personagens', ()
 
     // 1. Braços de Gorila + Luvas de Boxe + Luvas de Seda
     // 2. Tênis de Foguete + Pernas de Mola
-    // 3. Capacete de Obra + Chapéu da Sorte + Coroa do Caos
-    // 4. Mochila de Bebidas + Ímã de Bebidas
+    // 3. Capacete de Obra + Coroa do Caos
+    // 4. Novos acessórios de loja e compatibilidade com os acessórios existentes
     const comboIds = [
       'bracos_de_gorila',
       'luvas_de_boxe',
@@ -120,11 +120,12 @@ describe('Fase 7 — CharacterAppearanceSystem e Aparência dos Personagens', ()
       'tenis_de_foguete',
       'pernas_de_mola',
       'capacete_de_obra',
-      'chapeu_da_sorte',
+      'chines_do_gab',
       'coroa_do_caos',
       'mochila_de_bebidas',
-      'ima_de_bebidas',
-      'barriga_de_chope',
+      'aliado_chiquinho_promos',
+      'marmita_ketchup_roubado',
+      'faixa_branca_jiu_emy',
       'capa_de_super_heroi',
     ];
 
@@ -136,17 +137,15 @@ describe('Fase 7 — CharacterAppearanceSystem e Aparência dos Personagens', ()
     expect(state.hasSpringLegs).toBe(true);
     expect(state.hasRocketShoes).toBe(true);
     expect(state.hasHardHat).toBe(true);
-    expect(state.hasLuckyHat).toBe(true);
+    expect(state.hasLuckyHat).toBe(false);
     expect(state.hasDrinkBackpack).toBe(true);
-    expect(state.hasDrinkMagnet).toBe(true);
+    expect(state.hasDrinkMagnet).toBe(false);
+    expect(state.activeTypes).toContain('team_jersey');
+    expect(state.activeTypes).toContain('promo_badge');
+    expect(state.activeTypes).toContain('white_jiu_belt');
 
-    // Regra de empilhamento sem sobreposição entre Capacete de Obra e Chapéu da Sorte
-    expect(state.headStack.luckyHatOffsetY).toBeLessThan(
-      state.headStack.hardHatOffsetY
-    );
-    expect(state.headStack.crownOffsetY).toBeLessThan(
-      state.headStack.luckyHatOffsetY
-    );
+    // A coroa continua deslocada quando coexistir com o capacete.
+    expect(state.headStack.crownOffsetY).toBeLessThan(0);
 
     // Renderiza em todas as poses de combate, caminhada e direções sem erro
     const g = createRecordingGraphics();
@@ -181,7 +180,7 @@ describe('Fase 7 — CharacterAppearanceSystem e Aparência dos Personagens', ()
 
   it('integra UpgradeSystem -> CharacterAppearanceSystem -> Player preservando animações e escala', () => {
     const scene = createMockScene();
-    const player = new Player(scene, 480, 472, getCharacterById('character_2'));
+    const player = new Player(scene, 480, 472, getCharacterById('piri'));
     const appearance = new CharacterAppearanceSystem();
     const upgrades = new UpgradeSystem({
       seed: 123,
@@ -197,7 +196,7 @@ describe('Fase 7 — CharacterAppearanceSystem e Aparência dos Personagens', ()
     upgrades.acquireUpgrade(getUpgradeById('joelheiras_blindadas'), player.state);
 
     expect(player.appearanceState.scale).toBeGreaterThan(1);
-    expect(player.visual.scale).toBe(player.appearanceState.scale);
+    expect(player.visual.scale).toBeCloseTo(player.appearanceState.scale * player.state.multipliers.bodyScale, 5);
 
     // Verifica que esqueleto acompanha pose de ataque e caminhada
     const skelIdle = computePoseSkeleton(1, 'idle');

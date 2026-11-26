@@ -68,6 +68,7 @@ export class InputController {
     return {
       attackType,
       toggleComboGuide: this.isActionJustPressed('COMBO_GUIDE'),
+      specialAbility: this.isActionJustPressed('SPECIAL_ABILITY'),
     };
   }
 }

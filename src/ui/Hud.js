@@ -260,7 +260,7 @@ export class Hud {
       this.tooltip.attach(this.effectsPanel, () => ({
         title: 'Bebidas Ativas',
         description:
-          'Bônus temporários ativos agora. Pegar a mesma bebida renova o tempo e cura novamente!',
+          'Bônus temporários ativos agora. Repetir uma bebida acumula um novo efeito com tempo próprio e cura novamente!',
       }));
     }
 

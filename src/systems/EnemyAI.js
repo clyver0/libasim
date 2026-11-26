@@ -228,7 +228,7 @@ export class EnemyAI {
     }
 
     // Detector anti-stuck quando em perseguição no chão/plataforma
-    if (enemy.isGrounded()) {
+    if (enemy.isGrounded() && !memory.dropSurfaceId) {
       memory.stuckTimerMs += deltaMs;
       if (memory.unstickTimerMs > 0) {
         memory.unstickTimerMs = Math.max(0, memory.unstickTimerMs - deltaMs);
@@ -259,6 +259,10 @@ export class EnemyAI {
       memory.lastCheckX = enemyOrigin.x;
     }
 
+    if (!enemy.isGrounded() && !memory.jumpTarget) {
+      return result;
+    }
+
     // Continua guiando o salto em andamento até aterrissar
     if (!enemy.isGrounded() && memory.jumpTarget) {
       const target = memory.jumpTarget;
@@ -277,7 +281,8 @@ export class EnemyAI {
           result.moveDir = 0;
         }
       } else {
-        result.moveDir = target.x >= enemyOrigin.x ? 1 : -1;
+        const targetDx = target.x - enemyOrigin.x;
+        result.moveDir = Math.abs(targetDx) <= 10 ? 0 : Math.sign(targetDx);
       }
       return result;
     }
@@ -330,15 +335,19 @@ export class EnemyAI {
               Math.abs(enemyOrigin.x - rightDropX)
                 ? leftDropX
                 : rightDropX;
-          } else {
+          } else if (canDropRight || canDropLeft) {
             chosenDropX = canDropRight ? rightDropX : leftDropX;
+          } else {
+            chosenDropX = enemyOrigin.x;
           }
 
-          memory.dropSurfaceId = enemySurface.id;
+          memory.dropSurfaceId =
+            canDropLeft || canDropRight ? enemySurface.id : null;
           memory.dropTargetX = chosenDropX;
         }
 
-        moveDir = memory.dropTargetX >= enemyOrigin.x ? 1 : -1;
+        const dropDx = memory.dropTargetX - enemyOrigin.x;
+        moveDir = Math.abs(dropDx) <= 2 ? 0 : Math.sign(dropDx);
       } else {
         memory.dropSurfaceId = null;
 

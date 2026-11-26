@@ -5,6 +5,7 @@ import { ATTACK_TYPES, BASIC_ATTACKS, COMBOS } from '../src/data/attacks.js';
 import { getCharacterById } from '../src/data/characters.js';
 import { getDrinkById } from '../src/data/drinks.js';
 import { UPGRADES, getUpgradeById } from '../src/data/upgrades.js';
+import { Enemy } from '../src/entities/Enemy.js';
 import { Player } from '../src/entities/Player.js';
 import { PlayerState } from '../src/entities/PlayerState.js';
 import { DrinkEffectManager } from '../src/systems/DrinkEffectManager.js';
@@ -93,7 +94,8 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
       const hasMechanicalEffect =
         Boolean(upgrade.modifiers.flat) ||
         Boolean(upgrade.modifiers.multiplier) ||
-        Boolean(upgrade.modifiers.gameplay);
+        Boolean(upgrade.modifiers.gameplay) ||
+        Boolean(upgrade.temporaryDrinkEffect);
       expect(hasMechanicalEffect).toBe(true);
     }
   });
@@ -179,7 +181,7 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
     expect(player.body.width).toBeGreaterThan(baseBodyWidth);
     expect(player.body.y + player.body.height).toBe(footBefore);
 
-    // Combate e dano: Luvas de Boxe (golpe leve), Tatuagem de Dragão (combo), Óculos de Precisão (alcance), Faixa Ninja (recuperação)
+    // Combate e dano: Luvas de Boxe (golpe leve), Tatuagem (combo), Óculos (alcance), Faixa branca (força e dano)
     const lightBefore = DamageCalculator.calculateDamage({
       attack: BASIC_ATTACKS.LIGHT,
       attackerStats: player.state.getCombatStats(),
@@ -192,7 +194,7 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
     system.acquireUpgrade('luvas_de_boxe', player.state);
     system.acquireUpgrade('tatuagem_de_dragao', player.state);
     system.acquireUpgrade('oculos_de_precisao', player.state);
-    system.acquireUpgrade('faixa_ninja', player.state);
+    system.acquireUpgrade('faixa_branca_jiu_emy', player.state);
 
     const lightAfter = DamageCalculator.calculateDamage({
       attack: BASIC_ATTACKS.LIGHT,
@@ -211,7 +213,7 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
     expect(combat.currentHitboxBounds.width).toBeGreaterThan(
       BASIC_ATTACKS.LIGHT.hitbox.width
     );
-    expect(combat._effectiveRecoveryMs).toBeLessThan(
+    expect(combat._effectiveRecoveryMs).toBeGreaterThan(
       BASIC_ATTACKS.LIGHT.recoveryMs
     );
 
@@ -230,18 +232,16 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
     player.onHit({ damage: 10, knockback: 30, direction: 1 });
     expect(player.hurtKnockbackVx).toBeLessThan(30 * 6);
 
-    // Coexistência Ímã de Bebidas + Mochila de Bebidas e compatibilidade com bebidas temporárias
-    system.acquireUpgrade('ima_de_bebidas', player.state);
-    const magnetAfterIma = player.state.gameplayModifiers.drinkMagnetBonus;
+    // O aliado aumenta a chance de Noias, e a mochila mantém a atração de bebidas.
+    system.acquireUpgrade('aliado_chiquinho_promos', player.state);
+    expect(player.state.gameplayModifiers.specialShopChanceBonus).toBe(0.2);
     system.acquireUpgrade('mochila_de_bebidas', player.state);
-    expect(player.state.gameplayModifiers.drinkMagnetBonus).toBeGreaterThan(
-      magnetAfterIma
-    );
+    expect(player.state.gameplayModifiers.drinkMagnetBonus).toBeGreaterThan(0);
 
     const drinkSys = new DrinkSystem({ seed: 'combo-drink' });
     const attraction = drinkSys.computeAttractionVelocity(
       { x: 100, y: 100 },
-      { x: 380, y: 100 },
+      { x: 310, y: 100 },
       { extraRadius: player.state.gameplayModifiers.drinkMagnetBonus }
     );
     expect(attraction.attracted).toBe(true);
@@ -262,6 +262,64 @@ describe('Fase 6 — Sistema de Upgrades (30 Upgrades e Regras)', () => {
     );
     drinkMgr.update(appliedDrink.effect.durationMs + 100, player.state);
     expect(player.state.effectiveStats).toEqual(statsBeforeDrink);
+  });
+
+  it('aplica os modificadores de camisa e marmita a sorte, inimigos e defesa', () => {
+    const state = new PlayerState(getCharacterById('character_1'));
+    const system = new UpgradeSystem({ seed: 'gab-marmita' });
+    const baseRarity = state.gameplayModifiers.drinkRarityBonus;
+    system.acquireUpgrade('chines_do_gab', state);
+    expect(state.gameplayModifiers.drinkRarityBonus).toBeGreaterThan(baseRarity);
+    expect(state.gameplayModifiers.enemyMoveSpeedMultiplier).toBe(0.9);
+    const enemy = Object.assign(Object.create(Enemy.prototype), {
+      state: { moveSpeed: 100 },
+      body: { setVelocityX: vi.fn() },
+      isDead: () => false,
+      moveSpeedMultiplier: 1,
+      facing: -1,
+    });
+    enemy.setMoveSpeedMultiplier(
+      state.gameplayModifiers.enemyMoveSpeedMultiplier
+    );
+    enemy.moveHorizontal(1);
+    expect(enemy.body.setVelocityX).toHaveBeenCalledWith(90);
+
+    const damageBeforeMarmita = DamageCalculator.calculateDamage({
+      attack: { baseDamage: 20, isCombo: false },
+      attackerStats: { strength: 10 },
+      targetStats: state.getCombatStats(),
+    });
+    system.acquireUpgrade('marmita_ketchup_roubado', state);
+    expect(state.effectiveStats.maxHp).toBeGreaterThan(100);
+    expect(state.gameplayModifiers.damageReduction).toBeGreaterThan(0);
+    expect(state.gameplayModifiers.enemyMoveSpeedMultiplier).toBeGreaterThan(0.9);
+
+    const damageAfterMarmita = DamageCalculator.calculateDamage({
+      attack: { baseDamage: 20, isCombo: false },
+      attackerStats: { strength: 10 },
+      targetStats: state.getCombatStats(),
+    });
+    expect(damageAfterMarmita).toBeLessThan(damageBeforeMarmita);
+  });
+
+  it('faz Tênis de Foguete acelerar e fortalecer muito, reduzindo resistência e sorte', () => {
+    const playerState = new PlayerState(getCharacterById('character_1'));
+    const baseStrength = playerState.effectiveStats.strength;
+    const baseResistance = playerState.effectiveStats.drinkResistance;
+    const baseSpeed = playerState.gameplayModifiers.moveSpeedMultiplier;
+    const system = new UpgradeSystem({ seed: 'rocket-shoes' });
+
+    system.acquireUpgrade('tenis_de_foguete', playerState);
+
+    expect(playerState.effectiveStats.strength).toBeGreaterThan(baseStrength * 2);
+    expect(playerState.effectiveStats.drinkResistance).toBeCloseTo(
+      baseResistance * 0.5
+    );
+    expect(playerState.gameplayModifiers.moveSpeedMultiplier).toBeGreaterThan(
+      baseSpeed * 1.6
+    );
+    expect(playerState.gameplayModifiers.damageMultiplier).toBe(1.25);
+    expect(playerState.gameplayModifiers.drinkRarityBonus).toBe(-0.45);
   });
 
   it('aplica cada um dos 30 upgrades individualmente sem erro (exceto conflito mútuo)', () => {

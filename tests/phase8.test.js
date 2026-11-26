@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vitest';
 import { CombatSystem } from '../src/combat/CombatSystem.js';
+import { SHOP_CONFIG } from '../src/constants/shops.js';
 import { ATTACK_TYPES } from '../src/data/attacks.js';
 import { getCharacterById } from '../src/data/characters.js';
 import { GoldenCharacter } from '../src/entities/GoldenCharacter.js';
@@ -56,6 +57,11 @@ function createMockScene() {
           y: 0,
           setOrigin: vi.fn(() => t),
           setDepth: vi.fn(() => t),
+          setPosition: vi.fn(function (x, y) {
+            this.x = x;
+            this.y = y;
+            return t;
+          }),
           destroy: vi.fn(),
         };
         return t;
@@ -174,6 +180,24 @@ describe('Fase 8 — Lojas (Chiquinho Promos) e Coquinho Extra', () => {
     expect(threeCount).toBeLessThan(twoCount + oneCount);
   });
 
+  it('aumenta deterministicamente a chance de aparições extras após adquirir um aliado', () => {
+    let foundAdditionalAppearance = false;
+    for (let seed = 1; seed <= 100; seed += 1) {
+      const base = new GoldenEventScheduler({ seed });
+      const boosted = new GoldenEventScheduler({ seed });
+      const baseCount = base.getScheduledEvents().length;
+
+      boosted.setProbabilityBonus(0.2);
+      expect(boosted.getScheduledEvents()[0].probability).toBe(1);
+      if (boosted.getScheduledEvents().length > baseCount) {
+        foundAdditionalAppearance = true;
+        break;
+      }
+    }
+
+    expect(foundAdditionalAppearance).toBe(true);
+  });
+
   it('Coquinho Extra não conta como inimigo comum, desaparece se sair da tela e abre loja especial sem subir dificuldade ao ser atingido', () => {
     const scene = createMockScene();
     const spawnSystem = new SpawnSystem({ seed: 10 });
@@ -211,6 +235,28 @@ describe('Fase 8 — Lojas (Chiquinho Promos) e Coquinho Extra', () => {
     expect(rewardedMiss).toBe(false);
     expect(shopSystem.isOpen()).toBe(false);
     expect(spawnSystem.defeatedCount).toBe(0);
+
+    const groundTop = 500;
+    expect(SHOP_CONFIG.COQUINHO.DEFAULT_HEIGHT_ABOVE_GROUND).toBe(
+      SHOP_CONFIG.COQUINHO.BODY_HEIGHT / 2
+    );
+    const groundedNoia = new GoldenCharacter(scene, {
+      id: 'noia_grounded',
+      screenWidth: 960,
+      y: groundTop - SHOP_CONFIG.COQUINHO.DEFAULT_HEIGHT_ABOVE_GROUND,
+    });
+    expect(
+      groundedNoia.getHurtbox().y + groundedNoia.getHurtbox().height
+    ).toBe(groundTop);
+    expect(scene.add.text).toHaveBeenCalledWith(
+      expect.any(Number),
+      expect.any(Number),
+      'NOIA',
+      expect.objectContaining({ color: '#fef08a' })
+    );
+    groundedNoia.syncVisualToBody();
+    expect(groundedNoia.nameLabel.setPosition).toHaveBeenCalled();
+    groundedNoia.destroy();
 
     // Caso 2: Coquinho é atingido por golpe do jogador -> abre loja especial sem alterar dificuldade nem plataformas
     const player = new Player(scene, 200, 472, getCharacterById('character_1'));

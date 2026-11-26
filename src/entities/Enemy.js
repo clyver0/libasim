@@ -29,6 +29,7 @@ export class Enemy {
     this.hitTargetIds = new Set();
     this.currentHitboxBounds = null;
     this.destroyed = false;
+    this.moveSpeedMultiplier = 1;
 
     // Estado interno por inimigo para IA sem alocações por frame
     this.aiMemory = {
@@ -187,12 +188,19 @@ export class Enemy {
 
   moveHorizontal(moveDir) {
     if (this.isDead()) return;
-    const velocityX = moveDir * this.state.moveSpeed;
+    const velocityX =
+      moveDir * this.state.moveSpeed * this.moveSpeedMultiplier;
     this.body.setVelocityX(velocityX);
 
     if (Math.abs(moveDir) > 0.1) {
       this.facing = moveDir >= 0 ? 1 : -1;
     }
+  }
+
+  setMoveSpeedMultiplier(multiplier = 1) {
+    this.moveSpeedMultiplier = Number.isFinite(multiplier)
+      ? multiplier
+      : 1;
   }
 
   jump() {

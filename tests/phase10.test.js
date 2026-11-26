@@ -467,6 +467,7 @@ describe('Fase 10 — Interface, Tooltips, Áudio e Fluxo Integrado Completo da 
         (gp.knockbackResistance ?? 0) > 0 ||
         (gp.drinkRarityBonus ?? 0) > 0 ||
         (gp.drinkMagnetBonus ?? 0) > 0 ||
+        Boolean(upg.temporaryDrinkEffect) ||
         (gp.bodyScale ?? 1) !== 1;
 
       expect(hasPositiveBenefit).toBe(true);

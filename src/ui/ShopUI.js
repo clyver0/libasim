@@ -2,6 +2,18 @@ import Phaser from 'phaser';
 import { GAMEPLAY } from '../constants/gameplay.js';
 import { summarizeUpgradeEffects } from '../data/upgrades.js';
 
+function coverBackground(scene, image, textureKey, width, height) {
+  const source = scene.textures?.get?.(textureKey)?.getSourceImage?.();
+  const sourceWidth = source?.naturalWidth || source?.width;
+  const sourceHeight = source?.naturalHeight || source?.height;
+
+  if (sourceWidth > 0 && sourceHeight > 0) {
+    image.setScale(Math.max(width / sourceWidth, height / sourceHeight));
+  } else {
+    image.setDisplaySize(width, height);
+  }
+}
+
 /**
  * Interface polida de Loja (Oficial Chiquinho Promos e Especial Coquinho Extra).
  */
@@ -22,20 +34,26 @@ export class ShopUI {
     this.container = scene.add.container(width / 2, height / 2).setDepth(130);
     this.container.setVisible(false);
 
-    this.backdrop = scene.add.rectangle(0, 0, width, height, 0x020617, 0.82);
+    this.officialArtwork = scene.add
+      .image(0, 0, 'shop_chiquinho_promos')
+      .setOrigin(0.5)
+      .setVisible(false);
+    coverBackground(scene, this.officialArtwork, 'shop_chiquinho_promos', width, height);
 
-    this.panelShadow = scene.add.rectangle(0, 6, 804, 412, 0x000000, 0.55);
+    this.noiaArtwork = scene.add
+      .image(0, 0, 'shop_noia_background')
+      .setOrigin(0.5)
+      .setVisible(false);
+    coverBackground(scene, this.noiaArtwork, 'shop_noia_background', width, height);
 
-    this.panel = scene.add
-      .rectangle(0, 0, 796, 404, 0x0b1120, 0.98)
-      .setStrokeStyle(2.5, 0x38bdf8);
+    this.backdrop = scene.add.rectangle(0, 0, width, height, 0x020617, 0.42);
 
     this.headerBar = scene.add
-      .rectangle(0, -162, 792, 66, 0x0f172a, 0.95)
+      .rectangle(0, -208, width, 112, 0x020617, 0.62)
       .setStrokeStyle(1, 0x1e293b);
 
     this.titleText = scene.add
-      .text(0, -172, '', {
+      .text(0, -226, '', {
         fontSize: '21px',
         fontStyle: 'bold',
         color: '#f8fafc',
@@ -43,7 +61,7 @@ export class ShopUI {
       .setOrigin(0.5);
 
     this.subtitleText = scene.add
-      .text(0, -144, '', {
+      .text(0, -193, '', {
         fontSize: '12.5px',
         color: '#cbd5e1',
       })
@@ -52,7 +70,7 @@ export class ShopUI {
     this.footerText = scene.add
       .text(
         0,
-        176,
+        242,
         'Setas / A-D: navegar   •   Enter / Espaço / Clique ou [1] [2] [3]: escolher upgrade',
         {
           fontSize: '12px',
@@ -63,9 +81,9 @@ export class ShopUI {
 
     this.cardsContainer = scene.add.container(0, 16);
     this.container.add([
+      this.officialArtwork,
+      this.noiaArtwork,
       this.backdrop,
-      this.panelShadow,
-      this.panel,
       this.headerBar,
       this.titleText,
       this.subtitleText,
@@ -94,17 +112,18 @@ export class ShopUI {
     this.currentTheme = session.theme;
 
     const accentColor = session.theme?.accentColor ?? 0x38bdf8;
-    const panelBg = session.theme?.panelBg ?? 0x0b1120;
     const milestoneSuffix = session.milestone
       ? `  •  ${session.milestone} INIMIGOS`
       : '';
 
-    this.panel.setFillStyle(panelBg, 0.98);
-    this.panel.setStrokeStyle(2.5, accentColor);
     this.titleText
       .setText(`${session.theme?.title ?? 'LOJA'}${milestoneSuffix}`)
       .setColor(session.theme?.accentHex ?? '#38bdf8');
     this.subtitleText.setText(session.theme?.subtitle ?? '');
+    const isOfficial = session.theme?.id === 'official';
+    this.officialArtwork.setVisible(isOfficial);
+    this.noiaArtwork.setVisible(session.theme?.id === 'special');
+    this.cardsContainer.setPosition(0, 16);
 
     this._rebuildCards(accentColor);
     this.container.setVisible(true);
@@ -115,6 +134,8 @@ export class ShopUI {
     this.selectionLocked = false;
     this.currentOptions = [];
     this.tooltip?.hide();
+    this.officialArtwork.setVisible(false);
+    this.noiaArtwork.setVisible(false);
     this.container.setVisible(false);
     this._clearCards();
   }
@@ -248,7 +269,9 @@ export class ShopUI {
       if (this.tooltip) {
         this.tooltip.attach(bg, () => ({
           title: `${upgrade.name} (#${upgrade.number})`,
-          description: `${upgrade.description}\nEfeito mecânico e visual ativos durante toda a partida.`,
+          description: upgrade.temporaryDrinkEffect
+            ? `${upgrade.description}\nO efeito especial dura 15 segundos.`
+            : `${upgrade.description}\nEfeito mecânico e visual ativos durante toda a partida.`,
         }));
       }
 

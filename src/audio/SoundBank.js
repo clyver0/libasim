@@ -99,6 +99,11 @@ export const SOUND_KEYS = {
   VICTORY: 'victory',
   DEFEAT: 'defeat',
   BGM_LOOP: 'bgm_loop',
+  ABILITY_ACTIVATE: 'ability_activate',
+  PHASE_UP: 'phase_up',
+  ANT_SQUISH: 'ant_squish',
+  DRINK_BOUNCE: 'drink_bounce',
+  SPECIAL_DRINK: 'special_drink',
 };
 
 export function registerDefaultSoundBank(audioManager) {
@@ -256,6 +261,63 @@ export function registerDefaultSoundBank(audioManager) {
         wave: 'triangle',
       }),
       { loop: true }
+    );
+    audioManager.load(
+      SOUND_KEYS.ABILITY_ACTIVATE,
+      createToneWavDataUri({
+        notes: [
+          { freq: 330, endFreq: 440, durationSec: 0.07 },
+          { freq: 523, endFreq: 784, durationSec: 0.11 },
+          { freq: 880, endFreq: 1175, durationSec: 0.14 },
+        ],
+        volume: 0.28,
+        wave: 'square',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.PHASE_UP,
+      createToneWavDataUri({
+        notes: [
+          { freq: 392, durationSec: 0.08 },
+          { freq: 523, durationSec: 0.08 },
+          { freq: 659, durationSec: 0.08 },
+          { freq: 784, durationSec: 0.18 },
+        ],
+        volume: 0.27,
+        wave: 'triangle',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.ANT_SQUISH,
+      createToneWavDataUri({
+        notes: [
+          { freq: 620, endFreq: 180, durationSec: 0.07 },
+          { freq: 240, endFreq: 480, durationSec: 0.05 },
+        ],
+        volume: 0.2,
+        wave: 'triangle',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.DRINK_BOUNCE,
+      createToneWavDataUri({
+        notes: [{ freq: 920, endFreq: 680, durationSec: 0.035 }],
+        volume: 0.12,
+        wave: 'triangle',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.SPECIAL_DRINK,
+      createToneWavDataUri({
+        notes: [
+          { freq: 1046, durationSec: 0.045 },
+          { freq: 1397, durationSec: 0.045 },
+          { freq: 1046, durationSec: 0.045 },
+          { freq: 1568, durationSec: 0.12 },
+        ],
+        volume: 0.24,
+        wave: 'square',
+      })
     );
     return true;
   } catch {

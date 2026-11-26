@@ -3,12 +3,14 @@ import { audioManager } from '../audio/AudioManager.js';
 import { SOUND_KEYS, registerDefaultSoundBank } from '../audio/SoundBank.js';
 import { GAMEPLAY } from '../constants/gameplay.js';
 import { CHARACTERS } from '../data/characters.js';
+import { CharacterAppearanceSystem } from '../systems/CharacterAppearanceSystem.js';
 import { drawStickFigure } from '../entities/Player.js';
 import { InputController } from '../systems/InputController.js';
 import { StatCalculator } from '../systems/StatCalculator.js';
 import { createCyberNightBackdrop } from '../ui/ArenaBackdrop.js';
 import { Tooltip } from '../ui/Tooltip.js';
 import { setupCrispScene } from '../utils/display.js';
+import { MusicDirector } from '../audio/MusicDirector.js';
 
 export class TitleScene extends Phaser.Scene {
   constructor() {
@@ -18,6 +20,14 @@ export class TitleScene extends Phaser.Scene {
     this.previewTimerMs = 0;
   }
 
+  preload() {
+    for (const character of CHARACTERS) {
+      if (character.portraitKey && character.portraitSrc) {
+        this.load.image(character.portraitKey, character.portraitSrc);
+      }
+    }
+  }
+
   create() {
     const { width, height } = setupCrispScene(this);
     this.selectedIndex = 0;
@@ -25,7 +35,8 @@ export class TitleScene extends Phaser.Scene {
     this.previewTimerMs = 0;
 
     registerDefaultSoundBank(audioManager);
-    audioManager.playMusic(SOUND_KEYS.BGM_LOOP);
+    this.musicDirector = new MusicDirector({ audio: audioManager });
+    this.musicDirector.startMenu();
 
     createCyberNightBackdrop(this, width, height, 'title-city-night');
     this.cameras.main.fadeIn?.(220, 9, 13, 22);
@@ -137,9 +148,23 @@ export class TitleScene extends Phaser.Scene {
         0.22
       );
 
+      const portrait = this.add
+        .image(cardX, centerY - 82, character.portraitKey)
+        .setScale(0.25)
+        .setDepth(3);
+
       const stickPreview = this.add.graphics({ x: cardX, y: centerY - 54 });
-      stickPreview.setScale?.(1.18);
-      drawStickFigure(stickPreview, character.color, 1, 'idle');
+      stickPreview.setScale?.(character.multipliers.bodyScale ?? 1);
+      drawStickFigure(
+        stickPreview,
+        character.color,
+        1,
+        'idle',
+        null,
+        CharacterAppearanceSystem.resolveAppearanceState(
+          (character.visualTypes ?? []).map((type) => ({ visual: { type } }))
+        )
+      );
 
       const nameLabel = this.add
         .text(cardX, centerY + 6, character.name, {
@@ -166,6 +191,7 @@ export class TitleScene extends Phaser.Scene {
             `⚔ Força: ${effective.strength}`,
             `🛡 Resist. Bebidas: ${effective.drinkResistance}`,
             `👟 Velocidade: ${moveSpeed}`,
+            `✨ [E] ${character.ability?.name ?? '-'}`,
           ].join('\n'),
           {
             fontSize: '13px',

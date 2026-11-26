@@ -10,6 +10,7 @@ export class PlayerState {
     this.characterId = characterData.id;
     this.characterName = characterData.name;
     this.characterRole = characterData.role ?? '';
+    this.portraitKey = characterData.portraitKey ?? null;
     this.color = characterData.color;
     this.colorHex = characterData.colorHex;
     this.baseStats = { ...characterData.baseStats };
@@ -17,20 +18,36 @@ export class PlayerState {
     this.upgrades = [];
     this.acquiredUpgradeIds = [];
     this.activeEffects = [];
+    // Modificadores temporários de habilidades especiais (nunca tocam baseStats/multipliers)
+    this.abilityModifiers = [];
+    this.drinkSynergies = characterData.drinkSynergies ?? {};
+    this.antImmunity = Boolean(characterData.antImmunity);
+    this.ability = characterData.ability ?? null;
+    this.visualTypes = characterData.visualTypes ?? [];
 
     this.effectiveStats = StatCalculator.calculateEffectiveStats({
       baseStats: this.baseStats,
       multipliers: this.multipliers,
       upgrades: this.upgrades,
-      activeEffects: this.activeEffects,
+      activeEffects: this.getTemporaryModifiers(),
     });
     this.gameplayModifiers = StatCalculator.calculateGameplayModifiers({
       characterMultipliers: this.multipliers,
       upgrades: this.upgrades,
-      activeEffects: this.activeEffects,
+      activeEffects: this.getTemporaryModifiers(),
     });
 
     this.currentHp = this.effectiveStats.maxHp;
+  }
+
+  getTemporaryModifiers() {
+    return [...this.activeEffects, ...this.abilityModifiers];
+  }
+
+  /** Define (ou limpa) os modificadores temporários da habilidade especial ativa. */
+  setAbilityModifiers(modifiers = []) {
+    this.abilityModifiers = Array.isArray(modifiers) ? [...modifiers] : [];
+    return this.recalculateStats();
   }
 
   recalculateStats() {
@@ -39,12 +56,12 @@ export class PlayerState {
       baseStats: this.baseStats,
       multipliers: this.multipliers,
       upgrades: this.upgrades,
-      activeEffects: this.activeEffects,
+      activeEffects: this.getTemporaryModifiers(),
     });
     this.gameplayModifiers = StatCalculator.calculateGameplayModifiers({
       characterMultipliers: this.multipliers,
       upgrades: this.upgrades,
-      activeEffects: this.activeEffects,
+      activeEffects: this.getTemporaryModifiers(),
     });
 
     const maxHpDelta = this.effectiveStats.maxHp - previousMaxHp;

@@ -18,7 +18,7 @@ export class GoldenCharacter {
       id = `coquinho_${Date.now()}`,
       direction = 1,
       screenWidth = 960,
-      y = 448,
+      y = 474,
       config = SHOP_CONFIG.COQUINHO,
       onHitReward = null,
     } = {}
@@ -66,6 +66,24 @@ export class GoldenCharacter {
 
     this.visual = scene.add.graphics({ x: startX, y }).setDepth?.(18) ??
       scene.add.graphics({ x: startX, y });
+    this.nameLabel = scene.add?.text
+      ? scene.add.text(
+          startX,
+          y - config.BODY_HEIGHT / 2 - 6,
+          'NOIA',
+          {
+            fontFamily: 'sans-serif',
+            fontSize: '13px',
+            fontStyle: 'bold',
+            color: '#fef08a',
+            stroke: '#451a03',
+            strokeThickness: 4,
+            backgroundColor: '#0f172a',
+            padding: { x: 5, y: 2 },
+          }
+        )
+      : null;
+    this.nameLabel?.setOrigin?.(0.5, 1)?.setDepth?.(20);
     this._redraw('walk_1');
 
     this._onPostUpdate = () => this.syncVisualToBody();
@@ -191,6 +209,10 @@ export class GoldenCharacter {
     if (this.destroyed || !this.body || !this.visual) return;
     const origin = this.getCombatOrigin();
     this.visual.setPosition(origin.x, origin.y);
+    this.nameLabel?.setPosition?.(
+      origin.x,
+      origin.y - this.config.BODY_HEIGHT / 2 - 6
+    );
   }
 
   destroy() {
@@ -200,6 +222,7 @@ export class GoldenCharacter {
       this.scene.events.off('postupdate', this._onPostUpdate);
     }
     this.visual?.destroy();
+    this.nameLabel?.destroy();
     this.collider?.destroy();
   }
 }
