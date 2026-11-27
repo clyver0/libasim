@@ -1,9 +1,10 @@
 import { CONTROLS } from '../constants/controls.js';
 import { GAMEPLAY } from '../constants/gameplay.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { BASIC_ATTACKS, COMBOS } from '../data/attacks.js';
 
 /**
- * Painel de interface com o guia de golpes individuais e combos.
+ * Painel de interface com o guia de golpes individuais, dash e combos.
  */
 export class ComboGuide {
   constructor(scene, controls = CONTROLS, combos = COMBOS) {
@@ -12,24 +13,26 @@ export class ComboGuide {
 
     const width = GAMEPLAY.SCREEN_WIDTH;
     const height = GAMEPLAY.SCREEN_HEIGHT;
-    const panelWidth = 560;
-    const panelHeight = 336;
+    const panelWidth = 576;
+    const panelHeight = 356;
 
     this.container = scene.add.container(width / 2, height / 2);
     this.container.setDepth(140);
+    this.container.setScrollFactor?.(0);
 
     const shadow = scene.add.rectangle(0, 6, panelWidth + 6, panelHeight + 6, 0x000000, 0.55);
 
     const bg = scene.add
       .rectangle(0, 0, panelWidth, panelHeight, 0x090d16, 0.96)
-      .setStrokeStyle(2, 0x38bdf8);
+      .setStrokeStyle(2.5, 0x38bdf8);
 
     const header = scene.add
       .rectangle(0, -panelHeight / 2 + 24, panelWidth - 4, 44, 0x0f172a, 0.95);
 
     const title = scene.add
-      .text(0, -panelHeight / 2 + 24, 'GUIA DE COMBATE E COMBOS', {
-        fontSize: '16px',
+      .text(0, -panelHeight / 2 + 24, '🥊 GUIA DE COMBATE, DASH E COMBOS', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '21px',
         fontStyle: 'bold',
         color: '#38bdf8',
       })
@@ -39,10 +42,12 @@ export class ComboGuide {
       LIGHT: controls.ATTACK_LIGHT.join('/'),
       HEAVY: controls.ATTACK_HEAVY.join('/'),
       SPECIAL: controls.ATTACK_SPECIAL.join('/'),
+      DASH: (controls.DASH ?? ['SHIFT', 'S']).join('/'),
     };
 
     const basicLines = [
-      `Golpes Básicos:   [${keyLabels.LIGHT}] ${BASIC_ATTACKS.LIGHT.name}   •   [${keyLabels.HEAVY}] ${BASIC_ATTACKS.HEAVY.name}   •   [${keyLabels.SPECIAL}] ${BASIC_ATTACKS.SPECIAL.name}`,
+      `Golpes:  [${keyLabels.LIGHT}] ${BASIC_ATTACKS.LIGHT.name}  •  [${keyLabels.HEAVY}] ${BASIC_ATTACKS.HEAVY.name}  •  [${keyLabels.SPECIAL}] ${BASIC_ATTACKS.SPECIAL.name}`,
+      `Esquiva Rápida:  [${keyLabels.DASH}] Dash / Slide (comando normal de esquiva)`,
       '',
       'Sequências de Combos (dano e alcance ampliados):',
       ...combos.map((combo, idx) => {
@@ -52,10 +57,11 @@ export class ComboGuide {
     ].join('\n');
 
     const bodyText = scene.add
-      .text(-panelWidth / 2 + 28, -panelHeight / 2 + 64, basicLines, {
+      .text(-panelWidth / 2 + 28, -panelHeight / 2 + 60, basicLines, {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '13.5px',
         color: '#e2e8f0',
-        lineSpacing: 10,
+        lineSpacing: 8,
       })
       .setOrigin(0, 0);
 
@@ -65,6 +71,7 @@ export class ComboGuide {
         panelHeight / 2 - 22,
         `Pressione [${controls.COMBO_GUIDE.join(' / ')}] para fechar`,
         {
+          fontFamily: TYPOGRAPHY.UI,
           fontSize: '12px',
           color: '#94a3b8',
         }

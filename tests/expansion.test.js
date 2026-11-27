@@ -15,6 +15,11 @@ vi.mock('howler', () => ({
       this.playing = false;
     });
     this.fade = vi.fn();
+    this._rate = 1;
+    this.rate = vi.fn((v) => {
+      if (typeof v === 'number') this._rate = v;
+      return this._rate;
+    });
     this.volume = vi.fn((v) => {
       if (typeof v === 'number') this._vol = v;
       return this._vol;
@@ -33,6 +38,7 @@ vi.mock('phaser', () => ({
 import { AudioManager } from '../src/audio/AudioManager.js';
 import { MusicDirector } from '../src/audio/MusicDirector.js';
 import { SOUND_KEYS, registerDefaultSoundBank } from '../src/audio/SoundBank.js';
+import { CombatSystem } from '../src/combat/CombatSystem.js';
 import { DRINK_CONFIG } from '../src/constants/drinks.js';
 import { ANT_CONFIG, DRUNK_FX_CONFIG, PHASE_CONFIG } from '../src/constants/expansion.js';
 import { PHYSICS } from '../src/constants/physics.js';
@@ -53,6 +59,8 @@ import { DifficultySystem } from '../src/systems/DifficultySystem.js';
 import { DrinkEffectManager } from '../src/systems/DrinkEffectManager.js';
 import { DrinkSystem } from '../src/systems/DrinkSystem.js';
 import { computeDrunkIntensity } from '../src/systems/DrunkIntensity.js';
+import { KeySequenceDetector } from '../src/systems/KeySequenceDetector.js';
+import { configureOneWayPlatform } from '../src/systems/PlatformCollision.js';
 import { PhaseSystem } from '../src/systems/PhaseSystem.js';
 import { SpecialAbilitySystem } from '../src/systems/SpecialAbilitySystem.js';
 import { UpgradeSystem } from '../src/systems/UpgradeSystem.js';
@@ -205,6 +213,13 @@ function createMockScene() {
 }
 
 describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efeitos e Áudio', () => {
+  it('exige 10 abates para carregar todas as habilidades especiais', () => {
+    for (const ability of Object.values(ABILITIES)) {
+      expect(ability.chargeType).toBe('kills');
+      expect(ability.killsRequired).toBe(10);
+    }
+  });
+
   it('1. define Açougue, Piri e Tonegi com atributos, tamanhos e identidades distintas', () => {
     expect(CHARACTERS.map((c) => c.id)).toEqual(['acougue', 'piri', 'tonegi']);
 
@@ -294,9 +309,11 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
       random: () => 0.5,
     });
 
-    // Não ativa antes do cooldown inicial
+    // Nove abates ainda não carregam a habilidade.
     expect(runtime.tryActivate()).toBe(false);
-    runtime.update(ABILITIES.terca_do_cantinho.initialCooldownMs);
+    for (let i = 0; i < 9; i += 1) runtime.registerKill();
+    expect(runtime.system.isReady()).toBe(false);
+    runtime.registerKill();
     expect(runtime.system.isReady()).toBe(true);
 
     expect(runtime.tryActivate()).toBe(true);
@@ -343,7 +360,23 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
     expect(player.abilityMoveSpeed).toBe(ABILITIES.o_fit_se_calou.moveSpeed);
 
     // Atropela o inimigo no caminho
-    runtime.update(16);
+    let ramBounds = null;
+    const resolveHits = CombatSystem.resolveHits;
+    CombatSystem.resolveHits = (options) => {
+      ramBounds = options.hitboxBounds;
+      return resolveHits(options);
+    };
+    try {
+      runtime.update(16);
+    } finally {
+      CombatSystem.resolveHits = resolveHits;
+    }
+    expect(ramBounds.height).toBe(ABILITIES.o_fit_se_calou.ram.height);
+    expect(ramBounds.y).toBeCloseTo(
+      player.getCombatOrigin().y +
+        ABILITIES.o_fit_se_calou.ram.offsetY -
+        ABILITIES.o_fit_se_calou.ram.height / 2
+    );
     expect(enemy.state.currentHp).toBeLessThan(initialHp);
 
     // Abates durante o carro não recarregam para invulnerabilidade infinita
@@ -373,11 +406,17 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
       random: () => 0.5,
     });
 
-    runtime.update(ABILITIES.pisa_ligeiro.initialCooldownMs);
+    const feetBefore = player.body.y + player.body.height;
+    for (let i = 0; i < 10; i += 1) runtime.registerKill();
     expect(runtime.tryActivate()).toBe(true);
     expect(player.isInvulnerable()).toBe(true);
     expect(player.abilityForm).toBe('ant');
     expect(player.body.height).toBeLessThan(normalHeight);
+    expect(player.body.y + player.body.height).toBeCloseTo(feetBefore);
+    expect(
+      player.visual.y +
+        player.visual.scaleY * player._getVisualFootOffset()
+    ).toBeCloseTo(feetBefore);
     expect(player.abilityMoveSpeed).toBeGreaterThan(
       PHYSICS.PLAYER_MOVE_SPEED * player.state.multipliers.moveSpeed
     );
@@ -441,6 +480,15 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
     expect(drunkFx.getLevelLabel()).toBe('OFF');
     drunkFx.teardown();
     expect(mockCam.setRotation).toHaveBeenCalledWith(0);
+
+    drunkFx.supported = true;
+    drunkFx._setup = vi.fn(() => {
+      drunkFx.active = true;
+    });
+    drunkFx.setSuppressed(true);
+    expect(drunkFx.update(16, 1)).toBe(0);
+    drunkFx.setSuppressed(false);
+    expect(drunkFx.update(16, 1)).toBeGreaterThan(0);
   });
 
   it('7. reduz frequência de spawn das bebidas, acelera queda e aplica gravidade/quique mantendo coleta intacta', () => {
@@ -740,6 +788,11 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
     // Inicia trilha principal
     director.startDefault();
     expect(audio.currentMusicKey).toBe(MUSIC_TRACKS.stage_normal.key);
+    const stageMusic = audio.sounds.get(MUSIC_TRACKS.stage_normal.key);
+    expect(director.setDrunkIntensity(1, 0)).toBeCloseTo(0.92);
+    expect(stageMusic.rate).toHaveBeenLastCalledWith(0.92);
+    expect(director.setDrunkIntensity(0, 1000)).toBe(1);
+    expect(stageMusic.rate).toHaveBeenLastCalledWith(1);
 
     // Mini-Boss -> faixa própria (Mountain King), sem sobrepor a anterior
     expect(director.playBossMusic('mini_boss_50', 1)).toBe(true);
@@ -780,6 +833,15 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
     fx.shockwave = vi.fn();
     fx.ring = vi.fn();
     fx.sparks = vi.fn();
+    fx.phaseTransition({
+      name: 'FASE 2',
+      subtitle: 'A coisa esquenta',
+      color: '#facc15',
+    });
+    expect(fx.announce).toHaveBeenCalledWith(
+      'PASSOU DE FASE!',
+      expect.objectContaining({ sub: 'FASE 2: A coisa esquenta' })
+    );
     fx.powerUpBurst({ x: 10, y: 20 }, 4);
     expect(fx.announce).toHaveBeenCalledWith(
       'FORÇA ×4!!!',
@@ -787,6 +849,34 @@ describe('Expansão — Personagens, Habilidades, Bebidas, Fases, Formigas, Efei
     );
     fx.dispose();
     expect(fx.disposed).toBe(true);
+  });
+
+  it('detecta 1-2-3-4-5 em sequência e reinicia alternando falha e tempo', () => {
+    const detector = new KeySequenceDetector(['1', '2', '3', '4', '5'], 1000);
+    expect(detector.push('1', 10)).toBe(false);
+    expect(detector.push('2', 20)).toBe(false);
+    expect(detector.push('4', 30)).toBe(false);
+    expect(detector.push('2', 40)).toBe(false);
+    expect(detector.push('1', 1200)).toBe(false);
+    expect(detector.push('2', 1210)).toBe(false);
+    expect(detector.push('3', 1220)).toBe(false);
+    expect(detector.push('4', 1230)).toBe(false);
+    expect(detector.push('5', 1240)).toBe(true);
+  });
+
+  it('configura plataformas elevadas para colisão somente pelo topo', () => {
+    const body = {
+      checkCollision: { up: false, down: true, left: true, right: true },
+    };
+
+    expect(configureOneWayPlatform(body)).toBe(true);
+    expect(body.checkCollision).toEqual({
+      up: true,
+      down: false,
+      left: false,
+      right: false,
+    });
+    expect(configureOneWayPlatform(null)).toBe(false);
   });
 
   it('12. garante limpeza completa ao reiniciar run (habilidade, formigas, efeitos de bebida e atributos-base intactos)', () => {

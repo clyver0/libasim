@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager.js';
 import { SOUND_KEYS, registerDefaultSoundBank } from '../audio/SoundBank.js';
 import { InputController } from '../systems/InputController.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { createCyberNightBackdrop } from '../ui/ArenaBackdrop.js';
 import { setupCrispScene } from '../utils/display.js';
 
@@ -47,15 +48,19 @@ export class GameOverScene extends Phaser.Scene {
       .setStrokeStyle(2.5, 0xef4444);
 
     this.add
-      .text(width / 2, 96, '💀 FIM DE JOGO', {
-        fontSize: '30px',
+      .text(width / 2, 94, '💀 FIM DE JOGO!', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '36px',
         fontStyle: 'bold',
         color: '#f87171',
+        stroke: '#020617',
+        strokeThickness: 6,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, 132, 'Você caiu em combate durante a partida.', {
+      .text(width / 2, 134, 'Você caiu durante a correria urbana.', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '15px',
         color: '#cbd5e1',
       })
@@ -64,6 +69,7 @@ export class GameOverScene extends Phaser.Scene {
     const lines = formatGameOverSummaryLines(this.summary);
     this.add
       .text(width / 2, 248, lines.join('\n'), {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '15px',
         color: '#f8fafc',
         align: 'center',

@@ -109,14 +109,18 @@ export function computeTakeoffPoint(
   enemyCenterX,
   bodyWidth,
   screenWidth = GAMEPLAY.SCREEN_WIDTH,
-  aiConfig = ENEMY_CONFIG.AI
+  aiConfig = ENEMY_CONFIG.AI,
+  worldBounds = null
 ) {
   const cur = getSurfaceBounds(currentSurface);
   const nxt = getSurfaceBounds(nextSurface);
   const margin = bodyWidth / 2 + aiConfig.CLEARANCE_MARGIN;
-  const minSurfaceX = Math.max(margin, cur.left + bodyWidth / 2 + 4);
+  const worldLeft = worldBounds?.left ?? Math.min(0, cur.left - 32);
+  const worldRight =
+    worldBounds?.right ?? Math.max(screenWidth, cur.right + 32);
+  const minSurfaceX = Math.max(worldLeft + margin, cur.left + bodyWidth / 2 + 4);
   const maxSurfaceX = Math.min(
-    screenWidth - margin,
+    worldRight - margin,
     cur.right - bodyWidth / 2 - 4
   );
 
@@ -247,10 +251,18 @@ export class EnemyAI {
 
         if (movedX < this.aiConfig.STUCK_MIN_DISTANCE_X && absDx > attack.rangeX) {
           memory.unstickTimerMs = this.aiConfig.UNSTICK_DURATION_MS;
-          memory.unstickDir =
-            enemyOrigin.x > this.screenWidth / 2 ? -1 : 1;
+          const isScrollingWorld = Boolean(layout?.groundSegments?.length);
+          memory.unstickDir = isScrollingWorld
+            ? facingToPlayer
+            : enemyOrigin.x > this.screenWidth / 2
+              ? -1
+              : 1;
           memory.cachedNextStep = null;
           result.moveDir = memory.unstickDir;
+          if (isScrollingWorld && memory.jumpCooldownMs <= 0) {
+            result.jump = true;
+            memory.jumpCooldownMs = this.aiConfig.JUMP_COOLDOWN_MS;
+          }
           return result;
         }
       }
@@ -291,8 +303,19 @@ export class EnemyAI {
       memory.jumpTarget = null;
     }
 
-    // Navegação por plataformas
-    const surfaces = layout ? [layout.ground, ...(layout.platforms ?? [])] : [];
+    // Navegação por plataformas e segmentos de chão (incluindo salto sobre buracos)
+    const groundList = layout?.groundSegments?.length
+      ? layout.groundSegments
+      : layout?.ground
+        ? [layout.ground]
+        : [];
+    const surfaces = layout ? [...groundList, ...(layout.platforms ?? [])] : [];
+    const worldBounds = layout?.ground
+      ? {
+          left: layout.ground.x - layout.ground.width / 2,
+          right: layout.ground.x + layout.ground.width / 2,
+        }
+      : { left: 0, right: this.screenWidth };
     const enemySurface = findReferenceSurface(
       enemyBox,
       surfaces,
@@ -321,8 +344,8 @@ export class EnemyAI {
         if (memory.dropSurfaceId !== enemySurface.id) {
           const leftDropX = curBounds.left - enemyBox.width * 0.7;
           const rightDropX = curBounds.right + enemyBox.width * 0.7;
-          const canDropLeft = leftDropX > 16;
-          const canDropRight = rightDropX < this.screenWidth - 16;
+          const canDropLeft = leftDropX > worldBounds.left + 16;
+          const canDropRight = rightDropX < worldBounds.right - 16;
 
           let chosenDropX;
           if (playerOrigin.x < curBounds.left && canDropLeft) {
@@ -378,7 +401,8 @@ export class EnemyAI {
             enemyOrigin.x,
             enemyBox.width,
             this.screenWidth,
-            this.aiConfig
+            this.aiConfig,
+            worldBounds
           );
 
           const distToTakeoff = takeoffX - enemyOrigin.x;

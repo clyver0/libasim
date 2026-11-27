@@ -60,7 +60,7 @@ export class AbilityRuntime {
     return this.system.activate();
   }
 
-  /** Cada inimigo comum derrotado contribui com uma unidade de carga (Piri). */
+  /** Cada inimigo comum derrotado contribui com uma unidade de carga. */
   registerKill() {
     return this.system?.registerKill(1) ?? false;
   }
@@ -230,11 +230,12 @@ export class AbilityRuntime {
     const drink = getDrinkById(rain.drinkId);
     if (!drink || !this.spawnDrink) return;
     const width = this.scene.logicalWidth ?? 960;
+    const scrollX = this.scene.cameras?.main?.scrollX ?? 0;
     for (let i = 0; i < rain.perTick && this.rainSpawned < rain.maxDrinks; i += 1) {
       this.rainSpawned += 1;
       this.spawnDrink({
         id: `terca_${Date.now()}_${this.rainSpawned}`,
-        x: rain.marginX + this.random() * (width - rain.marginX * 2),
+        x: scrollX + rain.marginX + this.random() * (width - rain.marginX * 2),
         y: rain.spawnY,
         drinkData: drink,
       });
@@ -258,6 +259,7 @@ export class AbilityRuntime {
       blendMode: 'ADD',
     });
     this.confetti.setDepth(40);
+    this.confetti.setScrollFactor?.(0);
   }
 
   _removeConfetti() {
@@ -288,9 +290,9 @@ export class AbilityRuntime {
       player.getCombatOrigin(),
       {
         width: ram.width,
-        height: player.body.height + ram.heightPad,
+        height: ram.height,
         offsetX: ram.width * 0.2,
-        offsetY: 0,
+        offsetY: ram.offsetY,
       },
       facing
     );

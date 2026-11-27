@@ -71,7 +71,14 @@ export class DrinkSystem {
 
   update(
     deltaMs,
-    { activeDrinks = [], playerDead = false, rarityBonus = 0 } = {}
+    {
+      activeDrinks = [],
+      playerDead = false,
+      rarityBonus = 0,
+      viewportLeft = 0,
+      viewportWidth = this.screenWidth,
+      holes = null,
+    } = {}
   ) {
     if (this.stopped || playerDead || typeof deltaMs !== 'number' || deltaMs <= 0) {
       return null;
@@ -93,14 +100,25 @@ export class DrinkSystem {
       return null;
     }
 
-    const minX = this.config.SPAWN_MARGIN_X;
-    const maxX = Math.max(minX + 1, this.screenWidth - this.config.SPAWN_MARGIN_X);
-    const x = this.random.range(minX, maxX);
+    const minX = viewportLeft + this.config.SPAWN_MARGIN_X;
+    const maxX = Math.max(
+      minX + 1,
+      viewportLeft + viewportWidth - this.config.SPAWN_MARGIN_X
+    );
+    let x = this.random.range(minX, maxX);
+    const y = this.config.SPAWN_Y;
+    if (Array.isArray(holes) && holes.length > 0) {
+      for (let attempt = 0; attempt < 6; attempt += 1) {
+        const overHole = holes.some((h) => x > h.left - 12 && x < h.right + 12);
+        if (!overHole) break;
+        x = this.random.range(minX, maxX);
+      }
+    }
 
     return {
       id: `drink-${this.nextDrinkId++}`,
       x,
-      y: this.config.SPAWN_Y,
+      y,
       drinkData,
     };
   }

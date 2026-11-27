@@ -4,12 +4,15 @@
  */
 
 /** Carro esportivo estilizado: roda girando, faróis e linhas de velocidade. */
-export function drawCar(graphics, { color = 0x22c55e, facing = 1, timeMs = 0 } = {}) {
+export function drawCar(
+  graphics,
+  { color = 0x22c55e, facing = 1, timeMs = 0, footOffset = 28 } = {}
+) {
   if (!graphics) return;
   graphics.clear();
   const d = facing >= 0 ? 1 : -1;
   const wheelSpin = timeMs * 0.04;
-  const bottom = 28; // altura dos pés do corpo padrão
+  const bottom = footOffset;
 
   // Linhas de velocidade atrás do carro
   graphics.lineStyle(2, 0xffffff, 0.55);
@@ -61,12 +64,15 @@ export function drawCar(graphics, { color = 0x22c55e, facing = 1, timeMs = 0 } =
 }
 
 /** Formiga gigante estilizada usada como forma do Tonegi (será reduzida pela escala visual). */
-export function drawAntForm(graphics, { color = 0xfbbf24, facing = 1, timeMs = 0 } = {}) {
+export function drawAntForm(
+  graphics,
+  { color = 0xfbbf24, facing = 1, timeMs = 0, footOffset = 28 } = {}
+) {
   if (!graphics) return;
   graphics.clear();
   const d = facing >= 0 ? 1 : -1;
   const t = timeMs * 0.045;
-  const bottom = 28;
+  const bottom = footOffset;
   const cy = bottom - 12;
 
   // Aura laranja pulsante (identidade distinta do carro verde)

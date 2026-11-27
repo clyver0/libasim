@@ -29,6 +29,8 @@ export class MusicDirector {
     this.activeBossId = null;
     this.activeBossPhase = 1;
     this.registered = false;
+    this.lastDrunkRate = null;
+    this.lastDrunkRateKey = null;
     this.audio.setMusicVolume?.(this.config.DEFAULT_MUSIC_VOLUME ?? 1);
   }
 
@@ -84,19 +86,27 @@ export class MusicDirector {
     return trackId ? this.tracks[trackId] ?? null : null;
   }
 
-  /** Inicia (ou retoma) a música normal da partida. */
-  startDefault({ fadeOutMs = 0 } = {}) {
+  /** Silencia a música para momentos de respiro / abertura silenciosa de fase. */
+  silenceForPhaseIntro({ fadeOutMs = 0 } = {}) {
+    this.registerTracks();
+    this.activeBossId = null;
+    this.activeBossPhase = 1;
+    this.audio.stopMusic({ fadeOutMs });
+  }
+
+  /** Inicia (ou retoma) a música normal da partida com fade-in configurável. */
+  startDefault({ fadeInMs = this.config.FADE_IN_MS, fadeOutMs = 0 } = {}) {
     this.registerTracks();
     this.activeBossId = null;
     this.activeBossPhase = 1;
     const targetKey = this._resolveStageKey();
     const played = this.audio.playMusic(targetKey, {
-      fadeInMs: this.config.FADE_IN_MS,
+      fadeInMs,
       fadeOutMs,
     });
     if (this.audio.currentMusicKey !== targetKey && targetKey !== this.fallbackKey) {
       return this.audio.playMusic(this.fallbackKey, {
-        fadeInMs: this.config.FADE_IN_MS,
+        fadeInMs,
         fadeOutMs,
       });
     }
@@ -159,6 +169,26 @@ export class MusicDirector {
 
   setVolume(volume) {
     return this.audio.setMusicVolume(volume);
+  }
+
+  setDrunkIntensity(intensity, timeMs = 0) {
+    const key = this.audio.currentMusicKey;
+    const sound = key ? this.audio.sounds.get(key) : null;
+    if (!sound || typeof sound.rate !== 'function') {
+      this.lastDrunkRate = null;
+      this.lastDrunkRateKey = null;
+      return 1;
+    }
+
+    const amount = Math.max(0, Math.min(1, Number(intensity) || 0));
+    const wobble = Math.sin(Math.max(0, timeMs) * 0.003) * 0.02 * amount;
+    const rate = Math.round((1 - amount * 0.08 + wobble) * 1000) / 1000;
+    if (this.lastDrunkRateKey !== key || this.lastDrunkRate !== rate) {
+      sound.rate(rate);
+      this.lastDrunkRate = rate;
+      this.lastDrunkRateKey = key;
+    }
+    return rate;
   }
 
   getVolume() {

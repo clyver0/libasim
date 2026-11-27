@@ -1,7 +1,10 @@
 export const CONTROLS = {
   MOVE_LEFT: ['LEFT', 'A'],
   MOVE_RIGHT: ['RIGHT', 'D'],
+  MOVE_UP: ['UP', 'W'],
+  MOVE_DOWN: ['DOWN', 'S'],
   JUMP: ['UP', 'W', 'SPACE'],
+  DASH: ['SHIFT', 'S', 'DOWN'],
   CONFIRM: ['ENTER', 'SPACE'],
   PAUSE: ['P'],
   // Teclas provisórias de combate e guia de combos (Seção 15 de TECHNICAL_DECISIONS.md)

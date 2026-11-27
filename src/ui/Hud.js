@@ -1,4 +1,5 @@
 import { GAMEPLAY } from '../constants/gameplay.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { summarizeUpgradeEffects } from '../data/upgrades.js';
 
 /**
@@ -106,10 +107,13 @@ export class Hud {
     this.colorBadge.setDepth(21);
 
     this.titleText = scene.add
-      .text(45, 20, '', {
-        fontSize: '15px',
+      .text(45, 19, '', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '18px',
         fontStyle: 'bold',
         color: '#f8fafc',
+        stroke: '#020617',
+        strokeThickness: 3,
       })
       .setDepth(21);
 
@@ -133,6 +137,7 @@ export class Hud {
 
     this.statsText = scene.add
       .text(14 + padding, 58, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '13px',
         color: '#cbd5e1',
         lineSpacing: 3,
@@ -147,6 +152,7 @@ export class Hud {
 
     this.enemyCounterText = scene.add
       .text(14 + padding + 10, 142, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '12.5px',
         fontStyle: 'bold',
         color: '#fda4af',
@@ -163,6 +169,7 @@ export class Hud {
 
     this.effectsText = scene.add
       .text(14 + 12, 183, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '11.5px',
         color: '#f1f5f9',
         lineSpacing: 3,
@@ -185,8 +192,9 @@ export class Hud {
     this.upgradesPanel.setInteractive?.();
 
     this.upgradesTitle = scene.add
-      .text(upgX + 12, upgY + 8, '⚡ UPGRADES ATIVOS', {
-        fontSize: '11.5px',
+      .text(upgX + 12, upgY + 7, '⚡ UPGRADES ATIVOS', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '14px',
         fontStyle: 'bold',
         color: '#38bdf8',
       })
@@ -195,6 +203,7 @@ export class Hud {
 
     this.upgradesListText = scene.add
       .text(upgX + 12, upgY + 27, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '11px',
         color: '#e2e8f0',
         lineSpacing: 3,
@@ -210,12 +219,15 @@ export class Hud {
     if (this.bossContainer) {
       this.bossPanel = scene.add
         .rectangle(0, 0, 410, 48, 0x090d16, 0.94)
-        .setStrokeStyle(2, 0xdc2626);
+        .setStrokeStyle(2.5, 0xdc2626);
       this.bossLabel = scene.add
         .text(0, -10, '', {
-          fontSize: '13px',
+          fontFamily: TYPOGRAPHY.DISPLAY,
+          fontSize: '16px',
           fontStyle: 'bold',
           color: '#f8fafc',
+          stroke: '#020617',
+          strokeThickness: 3,
         })
         .setOrigin(0.5);
       this.bossHpBg = scene.add
@@ -233,9 +245,157 @@ export class Hud {
       this.bossContainer.setVisible(false);
     }
 
+    // Garante que toda a HUD permaneça fixa na tela durante a movimentação da câmera
+    for (const uiObj of [
+      this.panelDecor,
+      this.panel,
+      this.colorBadge,
+      this.titleText,
+      this.hpBarBg,
+      this.hpBarFill,
+      this.hpBarGloss,
+      this.statsText,
+      this.enemyPillBg,
+      this.enemyCounterText,
+      this.effectsPanel,
+      this.effectsText,
+      this.upgradesPanel,
+      this.upgradesTitle,
+      this.upgradesListText,
+      this.bossContainer,
+    ]) {
+      uiObj?.setScrollFactor?.(0);
+    }
+
+    this.drinkTimersVisible = true;
+    this.drinkTimers = this._createDrinkTimers(screenW);
     this.currentUpgrades = [];
     this._setupTooltips();
     this.update(initialSnapshot, enemyProgress, [], { acquiredUpgrades: [] });
+  }
+
+  _createDrinkTimers(screenW) {
+    if (typeof this.scene?.add?.container !== 'function') return null;
+
+    const container = this.scene.add
+      .container(0, 0)
+      .setDepth(200)
+      .setScrollFactor(0);
+    const cardWidth = 196;
+    const cardHeight = 26;
+    const barWidth = 176;
+    const slots = [];
+
+    for (let index = 0; index < 6; index += 1) {
+      const column = index % 2;
+      const row = Math.floor(index / 2);
+      const x = screenW / 2 + (column === 0 ? -104 : 104);
+      const y = 93 + row * 28;
+      const card = this.scene.add.container(x, y).setVisible(false);
+      const background = this.scene.add
+        .rectangle(0, 0, cardWidth, cardHeight, 0x020617, 0.94)
+        .setStrokeStyle(1, 0x334155, 0.95);
+      const label = this.scene.add
+        .text(-cardWidth / 2 + 8, -9, '', {
+          fontSize: '10.5px',
+          fontStyle: 'bold',
+          color: '#f8fafc',
+        })
+        .setOrigin(0, 0.5);
+      const timer = this.scene.add
+        .text(cardWidth / 2 - 8, -9, '', {
+          fontSize: '10px',
+          color: '#cbd5e1',
+        })
+        .setOrigin(1, 0.5);
+      const barBackground = this.scene.add
+        .rectangle(-barWidth / 2, 7, barWidth, 4, 0x1e293b, 1)
+        .setOrigin(0, 0.5);
+      const barFill = this.scene.add
+        .rectangle(-barWidth / 2, 7, barWidth, 4, 0x38bdf8, 1)
+        .setOrigin(0, 0.5);
+
+      card.add([background, label, timer, barBackground, barFill]);
+      container.add(card);
+      slots.push({ card, label, timer, barFill });
+    }
+
+    const overflow = this.scene.add
+      .text(screenW / 2, 169, '', {
+        fontSize: '10px',
+        fontStyle: 'bold',
+        color: '#cbd5e1',
+        stroke: '#020617',
+        strokeThickness: 3,
+      })
+      .setOrigin(0.5, 0);
+    container.add(overflow);
+    return { container, slots, overflow, barWidth };
+  }
+
+  setDrinkTimersVisible(visible) {
+    this.drinkTimersVisible = Boolean(visible);
+    if (this.drinkTimers) {
+      this.drinkTimers.container.setVisible(
+        this.drinkTimersVisible &&
+          this.drinkTimers.slots.some((slot) => slot.card.visible)
+      );
+    }
+  }
+
+  updateDrinkTimers(activeEffects = []) {
+    if (!this.drinkTimers) return;
+    const effects = Array.isArray(activeEffects)
+      ? [...activeEffects]
+          .filter(
+            (effect) =>
+              Number(effect?.remainingMs) > 0 &&
+              Number(effect?.durationMs) > 0
+          )
+          .sort((a, b) => a.remainingMs - b.remainingMs)
+      : [];
+    const visibleEffects = effects.slice(0, this.drinkTimers.slots.length);
+    const occurrences = new Map();
+
+    this.drinkTimers.slots.forEach((slot, index) => {
+      const effect = visibleEffects[index];
+      if (!effect) {
+        slot.card.setVisible(false);
+        return;
+      }
+
+      const name = String(effect.name ?? effect.drinkId ?? 'Bebida');
+      const occurrence = (occurrences.get(name) ?? 0) + 1;
+      occurrences.set(name, occurrence);
+      const duplicateSuffix =
+        effects.filter((item) => (item.name ?? item.drinkId) === name).length > 1
+          ? ` #${occurrence}`
+          : '';
+      const maxNameLength = duplicateSuffix ? 19 : 23;
+      const label =
+        name.length > maxNameLength
+          ? `${name.slice(0, maxNameLength - 1)}…`
+          : name;
+      const remainingMs = Math.max(0, Number(effect.remainingMs) || 0);
+      const durationMs = Math.max(1, Number(effect.durationMs) || 1);
+      const progress = Math.max(0, Math.min(1, remainingMs / durationMs));
+      slot.label.setText(`${label}${duplicateSuffix}`);
+      slot.timer.setText(`${(remainingMs / 1000).toFixed(1)}s`);
+      slot.barFill.width = this.drinkTimers.barWidth * progress;
+      slot.barFill.setFillStyle(effect.color ?? 0x38bdf8, 1);
+      slot.card.setVisible(true);
+    });
+
+    const overflowCount = Math.max(
+      0,
+      effects.length - this.drinkTimers.slots.length
+    );
+    this.drinkTimers.overflow
+      .setText(overflowCount > 0 ? `+${overflowCount} efeitos ativos` : '')
+      .setVisible(overflowCount > 0);
+    this.drinkTimers.container.setVisible(
+      this.drinkTimersVisible && effects.length > 0
+    );
   }
 
   _setupTooltips() {
@@ -313,6 +473,7 @@ export class Hud {
     }
 
     if (Array.isArray(activeEffects)) {
+      this.updateDrinkTimers(activeEffects);
       const detailedLines = formatDetailedActiveEffects(activeEffects);
       if (detailedLines.length === 0) {
         this.effectsPanel.setVisible(false);
@@ -413,5 +574,6 @@ export class Hud {
     safeDestroy(this.upgradesTitle);
     safeDestroy(this.upgradesListText);
     safeDestroy(this.bossContainer);
+    safeDestroy(this.drinkTimers?.container);
   }
 }

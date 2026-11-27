@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager.js';
 import { SOUND_KEYS, registerDefaultSoundBank } from '../audio/SoundBank.js';
 import { GAMEPLAY } from '../constants/gameplay.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { CHARACTERS } from '../data/characters.js';
 import { CharacterAppearanceSystem } from '../systems/CharacterAppearanceSystem.js';
 import { drawStickFigure } from '../entities/Player.js';
@@ -43,21 +44,27 @@ export class TitleScene extends Phaser.Scene {
     this.inputController = new InputController(this);
     this.tooltip = new Tooltip(this);
 
-    // Título estilizado com sombra/brilho neon
+    // Título estilizado cartunesco com contorno forte e brilho neon
     this.add
-      .text(width / 2, 56, GAMEPLAY.GAME_TITLE.toUpperCase(), {
-        fontSize: '42px',
+      .text(width / 2, 54, GAMEPLAY.GAME_TITLE.toUpperCase(), {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '52px',
         fontStyle: 'bold',
-        color: '#f8fafc',
-        stroke: '#0ea5e9',
-        strokeThickness: 2,
+        color: '#facc15',
+        stroke: '#090d16',
+        strokeThickness: 8,
+        letterSpacing: 2,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, 98, GAMEPLAY.GAME_SUBTITLE, {
+      .text(width / 2, 99, GAMEPLAY.GAME_SUBTITLE, {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '14.5px',
-        color: '#94a3b8',
+        fontStyle: 'bold',
+        color: '#7dd3fc',
+        stroke: '#090d16',
+        strokeThickness: 3,
       })
       .setOrigin(0.5);
 
@@ -168,15 +175,19 @@ export class TitleScene extends Phaser.Scene {
 
       const nameLabel = this.add
         .text(cardX, centerY + 6, character.name, {
-          fontSize: '18px',
+          fontFamily: TYPOGRAPHY.DISPLAY,
+          fontSize: '22px',
           fontStyle: 'bold',
           color: '#f8fafc',
+          stroke: '#020617',
+          strokeThickness: 3,
         })
         .setOrigin(0.5);
 
       const roleLabel = this.add
-        .text(cardX, centerY + 26, character.role ?? '', {
-          fontSize: '11.5px',
+        .text(cardX, centerY + 27, character.role ?? '', {
+          fontFamily: TYPOGRAPHY.UI,
+          fontSize: '12px',
           fontStyle: 'bold',
           color: character.colorHex ?? '#38bdf8',
         })
@@ -194,6 +205,7 @@ export class TitleScene extends Phaser.Scene {
             `✨ [E] ${character.ability?.name ?? '-'}`,
           ].join('\n'),
           {
+            fontFamily: TYPOGRAPHY.UI,
             fontSize: '13px',
             color: '#cbd5e1',
             align: 'center',
@@ -252,10 +264,14 @@ export class TitleScene extends Phaser.Scene {
       .setInteractive({ useHandCursor: true });
 
     this.add
-      .text(width / 2, btnY, '▶  INICIAR PARTIDA', {
-        fontSize: '16px',
+      .text(width / 2, btnY, '▶  PARTIU CORRERIA!', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '21px',
         fontStyle: 'bold',
         color: '#f8fafc',
+        stroke: '#020617',
+        strokeThickness: 4,
+        letterSpacing: 1,
       })
       .setOrigin(0.5);
 

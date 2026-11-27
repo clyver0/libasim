@@ -27,23 +27,25 @@ Existem **três personagens jogáveis** (definidos em `src/data/characters.js`),
 
 - **Açougue**: muito grande (`bodyScale: 1.55`), relativamente forte (`strength ×1.3`), altíssima resistência a bebidas (`drinkResistance ×1.8`), muito lento (`moveSpeed ×0.62`).
   - *Sinergia Cantinho do Vale*: cada coleta acumula força e possui temporizador independente: 1 Cantinho = `2×`, 2 = `3×`, até o limite de `10×`. O Açougue não recebe a embriaguez visual genérica dessa bebida; suas chamas e o tom avermelhado da tela aumentam com os acúmulos.
-  - *Ataque Especial — Terça do Cantinho*: chuva exagerada e configurável de garrafas de *Cantinho do Vale* caindo do céu com confetes e animações de ativação/encerramento (não concede invulnerabilidade).
+  - *Ataque Especial — Terça do Cantinho*: carrega após derrotar **10 inimigos comuns**; chuva exagerada e configurável de garrafas de *Cantinho do Vale* caindo do céu com confetes e animações de ativação/encerramento (não concede invulnerabilidade).
 - **Piri**: porte médio/grande (`bodyScale: 1.25`), muito forte (`strength ×1.7`), muita resistência a bebidas (`drinkResistance ×1.7`), lento (`moveSpeed ×0.78`).
   - *Ataque Especial — O fit se calou*: carrega após derrotar **10 inimigos comuns** (1 unidade por abate). Ao ativar, transforma-se em um carro esportivo em alta velocidade, invulnerável por duração finita, avançando e atropelando tudo no caminho com partículas e feedback de impacto.
 - **Tonegi**: muito pequeno (`bodyScale: 0.72`), relativamente rápido (`moveSpeed ×1.2`), muito forte (`strength ×1.6`), pouquíssima resistência a bebidas (`drinkResistance ×0.45`).
   - *Imunidade passiva a formigas*: imune às formigas da Fase 4 (com ou sem habilidade ativa); ao tocar Tonegi, a formiga morre imediatamente com feedback visual `SPLAT!`.
-  - *Ataque Especial — Pisa ligeiro, pisa ligeiro*: transforma-se em uma formiga ainda menor (`bodyScale ×0.55`), extremamente rápida e invulnerável por duração finita, invocando formigas auxiliares com IA própria que perseguem e atacam inimigos e são destruídas ao término da habilidade/run.
+  - *Ataque Especial — Pisa ligeiro, pisa ligeiro*: carrega após derrotar **10 inimigos comuns**; transforma-se em uma formiga ainda menor (`bodyScale ×0.55`), extremamente rápida e invulnerável por duração finita, invocando formigas auxiliares com IA própria que perseguem e atacam inimigos e são destruídas ao término da habilidade/run.
 
 Regras gerais:
 - Os multiplicadores são aplicados aos atributos-base via `StatCalculator` (sem duplicar lógica).
+- As três habilidades especiais exigem 10 abates comuns e reiniciam sua carga após o uso.
 - Nenhuma habilidade concede invulnerabilidade ou velocidade permanente; atributos-base nunca são contaminados por efeitos temporários.
+- A sequência secreta `1-2-3-4-5` alterna um modo de invulnerabilidade e dano extremos, com confirmação em modal; a segunda sequência desativa o modo.
 
 ### Expansão de Combate, Bebidas, Fases, Chuva de Formigas e Trilha Sonora
-- **Efeitos de embriaguez**: pós-processamento WebGL combinando `phaser3-rex-plugins` (`WarpPostFxPipeline` + `SwirlPostFxPipeline`), aberração cromática/visão dupla, `Barrel`, `ColorMatrix` e `Bloom` do Phaser 3.90, proporcional à raridade/duração das bebidas, com redução/desligamento configurável (`[N]`) e restauração completa ao expirar.
+- **Efeitos de embriaguez**: pós-processamento WebGL combinando `phaser3-rex-plugins` (`WarpPostFxPipeline` + `SwirlPostFxPipeline`), aberração cromática/visão dupla, `Barrel`, `ColorMatrix` e `Bloom` do Phaser 3.90, proporcional à raridade/duração das bebidas, com redução/desligamento configurável (`[N]`) e restauração completa ao expirar. O pós-processamento fica suspenso na loja oficial.
 - **Bebidas**: spawn menos frequente (`16s`), queda mais rápida com gravidade real, quique em plataformas (`BOUNCE: 0.52`) e *squash & stretch*.
 - **Progressão em 4 Fases**: a cada 25 inimigos comuns derrotados (`0–24`, `25–49`, `50–74`, `75–99`), ocorre transição com anúncio, onda de choque, ajuste proporcional dos inimigos ativos, aumento de multiplicadores (em camada sobre a dificuldade das lojas oficiais) e desbloqueio de 10 arquétipos distintos de inimigos comuns.
 - **Fase 4 — Chuva de Formigas**: formigas pequenas, rápidas e fracas caem constantemente até o fim da Fase 4 (100 abates), com teto rígido de entidades simultâneas e imunidade letal de Tonegi.
-- **Trilha Sonora**: obras clássicas em domínio público/CC0 reproduzidas via `Howler.js` + `MusicDirector`, com faixas distintas para partida normal (*William Tell Overture*), Mini-Chefão (*In the Hall of the Mountain King*), Boss Final Fase 1 (*Beethoven — 5ª Sinfonia*) e Boss Final Fase 2 (*Cavalgada das Valquírias*), com crossfade, volume configurável (`[`/`]`) e sem sobreposição.
+- **Trilha Sonora**: obras clássicas em domínio público/CC0 reproduzidas via `Howler.js` + `MusicDirector`, com faixas distintas para partida normal (*William Tell Overture*), Mini-Chefão (*In the Hall of the Mountain King*), Boss Final Fase 1 (*Beethoven — 5ª Sinfonia*) e Boss Final Fase 2 (*Cavalgada das Valquírias*), com crossfade, volume configurável (`[`/`]`) e sem sobreposição. A velocidade/afinação da faixa acompanha sutilmente a intensidade dos efeitos de bebida.
 
 ## 3. Atributos do jogador
 
@@ -96,11 +98,11 @@ Características:
 
 ### Spawn
 
-Os inimigos entram pela região superior da tela, em posições aleatórias.
+O inimigo surge pela região superior da área visível atual da câmera, em posições aleatórias sobre solo seguro.
 
-Devem se deslocar pela tela em direção ao jogador, utilizando plataformas quando necessário.
+Devem se deslocar em direção ao jogador, utilizando plataformas e saltando buracos quando necessário.
 
-A câmera permanece fixa.
+A câmera acompanha horizontalmente o avanço contínuo do jogador para a direita.
 
 ### Inteligência artificial
 
@@ -446,26 +448,27 @@ Se a aparição coincidir com uma loja oficial:
 
 A loja especial não modifica a dificuldade nem regenera as plataformas.
 
-## 12. Cenário e plataformas
+## 12. Cenário, movimentação horizontal, plataformas, dash e buracos
 
-A câmera permanece fixa durante a gameplay.
+O gameplay acontece em progressão horizontal estilo *beat 'em up*:
+- O jogador controla livremente a movimentação horizontal (avançando para a direita, parando ou recuando dentro da área ativa da câmera) enquanto novos inimigos surgem conforme o avanço.
+- A câmera acompanha o jogador horizontalmente com *lookahead* para a direita e cenário em *parallax* contínuo, sem paredes artificiais à direita.
+- A cada nova fase (`0`, `25`, `50` e `75` abates), há uma abertura padronizada: o jogador caminha sozinho para a direita em silêncio musical, uma seta cartunesca piscando indica o caminho à direita e, após alguns segundos, a música entra em *fade-in* e os inimigos voltam a surgir.
 
-O jogador se movimenta dentro da área visível, utilizando plataformas.
+### Dash / Slide
+- Acionado como comando normal por botão próprio (`SHIFT`, `S` ou `DOWN`), sem cooldown nem indicador de habilidade.
+- Deslocamento rápido na direção do movimento com animação visual dedicada (slide rasteiro no chão e dash aerodinâmico no ar), partículas discretas e *i-frames* de esquiva, respeitando obstáculos sólidos sem atravessá-los de forma inconsistente.
 
-### Geração
+### Buracos no chão
+- Segmentos de chão são intercalados por buracos frequentes (incluindo vãos longos acompanhados por plataformas de travessia alcançáveis).
+- Ao cair em um buraco, o jogador perde exatamente **30 HP**, sofre um ricochete parabólico de volta à área jogável segura e recebe proteção temporária contra dano repetido durante a recuperação.
 
-Criar um sistema modular PlatformGenerator.
-
-As plataformas:
-- Possuem posições diferentes em cada run.
-- São regeneradas a cada visita oficial do Chiquinho.
-- Devem permanecer dentro dos limites da tela.
-- Não podem apresentar sobreposições indevidas.
-- Devem respeitar distâncias horizontais e verticais alcançáveis.
-- Devem manter uma região segura para o jogador.
-- Não podem formar configurações impossíveis de atravessar.
-
-O Coquinho Extra não altera as plataformas.
+### Geração procedural de plataformas
+Além do `PlatformGenerator` determinístico base, o `HorizontalTrackSystem` gera chunks horizontais sob demanda à frente do jogador e descarta chunks antigos atrás da câmera, desbloqueando categorias por fase:
+- **Plataformas estáticas** (`static`): disponíveis desde a Fase 1.
+- **Plataformas móveis** (`moving`): deslocamento horizontal ou vertical contínuo, disponíveis a partir da **Fase 2**.
+- **Plataformas desintegráveis** (`crumbling`): tremem ao contato do jogador e se desintegram após breve intervalo, disponíveis a partir da **Fase 3**.
+- Todas as plataformas elevadas colidem somente pelo topo e respeitam o envelope real de salto (`canJumpBetween`).
 
 ### Reprodutibilidade
 
@@ -496,7 +499,7 @@ Elementos:
 - Resistência contra bebidas.
 - Contador de inimigos derrotados.
 - Indicadores de efeitos ativos.
-- Timers de bebidas.
+- Timers de bebidas em barras no topo central, renderizados acima do pós-processamento de embriaguez.
 - Atalhos de teclado.
 - Guia de combos.
 - Menus de loja.
@@ -526,6 +529,8 @@ Fluxo geral:
 13. Tela de vitória ao derrotar o boss.
 
 O evento Coquinho Extra pode ocorrer durante a run sem substituir ou alterar esse fluxo.
+
+Na derrota, a animação do jogador termina antes da abertura da tela de Game Over; a mudança de fase tem um anúncio visual animado explícito.
 
 ## 16. Princípios de implementação
 

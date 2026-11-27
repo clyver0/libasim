@@ -88,6 +88,8 @@ Responsável pelas regras e mecânicas independentes.
 Exemplos:
 - InputController
 - PlatformGenerator
+- PlatformCollision
+- KeySequenceDetector
 - DifficultySystem
 - SpawnSystem
 - DrinkSystem
@@ -191,9 +193,14 @@ A física deve considerar:
 - Limites do cenário.
 - Plataformas.
 
-A movimentação deve ser independente da lógica de combate.
+A movimentação deve ser independente da lógica de combate, suportando controle manual horizontal estilo *beat 'em up*, pulo e dash/slide nas Fases 1 e 2 (`side_2d` e `side_3d`) e movimentação + dash em 8 direções sem gravidade vertical nas Fases 3 e 4 (`top_down`).
 
-A câmera da gameplay é fixa.
+A progressão de perspectiva por fase é coordenada por `PerspectiveSystem` (`src/systems/PerspectiveSystem.js`):
+- **Fase 1 (`side_2d`)**: física lateral com gravidade vertical e renderização 2D original (`ParallaxBackdrop` + `ArenaBackdrop` + visuais 2D das entidades).
+- **Fase 2 (`side_3d`)**: preserva a simulação física e colisões 2D do Arcade Physics, delegando a apresentação visual ao `Stage3DRenderer` (`src/ui/Stage3DRenderer.js`) sobre o mesmo canvas WebGL do Phaser (mantendo `DrunkEffect` PostFX restrito à câmera do mundo e a `uiCamera` limpa).
+- **Fases 3 e 4 (`top_down`)**: desativa a gravidade vertical (`gravity.y = 0`), converte plataformas `static`/`moving` em obstáculos 4-vias e `crumbling` em grades de piso, orienta hitboxes/knockback/IA em 360° no plano `(X, Y)` e delega a apresentação ao `TopDownRenderer` (`src/ui/TopDownRenderer.js`).
+
+A câmera da gameplay acompanha o jogador horizontalmente (`scrollX` com *lookahead* à direita e `scrollY = 0`), sem limite artificial à direita, mantendo todos os elementos de HUD/modais fixos na viewport (`setScrollFactor(0)`) e isolados na `uiCamera`.
 
 A configuração global pode manter gravidade zero caso isso seja necessário para preservar o contrato de inicialização e testes existentes. A gravidade vertical da gameplay deve ser configurada na cena correspondente.
 
@@ -437,6 +444,11 @@ Para manter baixo acoplamento e responsabilidade única, a expansão foi estrutu
 
 - **Constantes e catálogos**: `src/constants/expansion.js` (parâmetros de fases, formigas, efeitos, pós-processamento e áudio), `src/data/abilities.js`, `src/data/characters.js` (3 personagens), `src/data/enemies.js` (10 arquétipos) e `src/data/music.js` (catálogo de trilhas em domínio público).
 - **Habilidades especiais**: `src/systems/SpecialAbilitySystem.js` (máquina de estados pura: `charging` -> `ready` -> `active`), `src/systems/AbilityRuntime.js` (execução de chuva de Cantinhos, atropelamento do carro e formigas auxiliares) e `src/ui/AbilityVisuals.js` / `src/ui/AbilityHud.js`.
+- **Colisão e atalhos especiais**: `src/systems/PlatformCollision.js` configura colisão unidirecional para plataformas elevadas; `src/systems/KeySequenceDetector.js` reconhece sequências sem misturá-las ao `InputController`.
 - **Progressão em 4 Fases e Formigas**: `src/systems/PhaseSystem.js` (transições a cada 25 abates e escalonamento em camada sobre `DifficultySystem`), `src/entities/Ant.js` e `src/systems/AntManager.js` (chuva hostil da Fase 4 com imunidade de Tonegi + formigas auxiliares).
-- **Efeitos Visuais e Pós-Processamento**: `src/systems/DrunkIntensity.js` (cálculo puro 0..1), `src/ui/DrunkEffect.js` (`phaser3-rex-plugins` `WarpPostFxPipeline` + `SwirlPostFxPipeline` + aberração cromática/visão dupla + Phaser 3.90 PostFX nativo) e `src/ui/EffectsManager.js` (`ParticleEmitter` nativo + `ShockwavePostFxPipeline` + câmera/tweens).
-- **Direção Musical**: `src/audio/MusicDirector.js` sobre `src/audio/AudioManager.js` (`Howler.js`), com troca sincronizada por boss/fase, fade sem sobreposição e volume configurável.
+- **Efeitos Visuais e Pós-Processamento**: `src/systems/DrunkIntensity.js` (cálculo puro 0..1), `src/ui/DrunkEffect.js` (`phaser3-rex-plugins` `WarpPostFxPipeline` + `SwirlPostFxPipeline` + aberração cromática/visão dupla + Phaser 3.90 PostFX nativo) e `src/ui/EffectsManager.js` (`ParticleEmitter` nativo + `ShockwavePostFxPipeline` + câmera/tweens). O HUD renderiza os timers de bebida em uma câmera sem pós-processamento; a `MainScene` suspende o efeito visual na loja oficial.
+- **Direção Musical**: `src/audio/MusicDirector.js` sobre `src/audio/AudioManager.js` (`Howler.js`), com troca sincronizada por boss/fase, silêncio inicial e fade-in nas aberturas de fase, fade sem sobreposição, volume configurável e modulação de velocidade proporcional à embriaguez.
+- **Progressão Horizontal, Plataformas Dinâmicas e Cinematografia**:
+  - `src/systems/HorizontalTrackSystem.js`: geração determinística em chunks horizontais com poda de chunks antigos atrás da câmera, segmentos de chão intercalados por buracos validados e três categorias de plataformas (`static`, `moving` horizontal/vertical e `crumbling` com ciclo `intact -> shaking -> broken -> intact`), reutilizando `canJumpBetween` de `PlatformGenerator`.
+  - `src/systems/PhaseOpeningSystem.js`: máquina de estados pura que coordena a abertura de todas as 4 fases (`0`, `25`, `50`, `75` abates) com caminhada autônoma, silêncio inicial, seta cartunesca piscando e retomada com fade-in musical.
+  - `src/ui/ArenaBackdrop.js` (`ParallaxBackdrop`) e `src/constants/typography.js`: camadas de *parallax* contínuo e tipografia cartunesca (`Bangers` e `Fredoka` com fallbacks nativos), aliadas a *letterbox*, cortina de fase e *hitstop* pontual em `EffectsManager.js`.

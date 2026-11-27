@@ -89,6 +89,7 @@ export class AudioManager {
     if (!sound || this.failedMusic.has(key)) return null;
     this.stopMusic({ fadeOutMs });
     this.currentMusicKey = key;
+    sound.rate?.(1);
     const target = this._musicTargetVolume(key, sound);
     if (fadeInMs > 0 && typeof sound.fade === 'function') {
       sound.volume?.(0);
@@ -106,6 +107,7 @@ export class AudioManager {
     this.currentMusicKey = null;
     const sound = this.sounds.get(key);
     if (!sound) return;
+    sound.rate?.(1);
     if (fadeOutMs > 0 && typeof sound.fade === 'function') {
       const from = this._musicTargetVolume(key, sound);
       sound.fade(from, 0, fadeOutMs);

@@ -8,7 +8,7 @@ import {
 import { Player } from '../src/entities/Player.js';
 import { PlayerState } from '../src/entities/PlayerState.js';
 import { StatCalculator } from '../src/systems/StatCalculator.js';
-import { formatHudLines } from '../src/ui/Hud.js';
+import { formatHudLines, Hud } from '../src/ui/Hud.js';
 
 function createMockScene() {
   const listeners = {};
@@ -21,6 +21,9 @@ function createMockScene() {
     strokeCircle: vi.fn(),
     fillCircle: vi.fn(),
     lineBetween: vi.fn(),
+    setDepth: vi.fn(function () {
+      return this;
+    }),
     setPosition: vi.fn(function (nx, ny) {
       this.x = nx;
       this.y = ny;
@@ -139,6 +142,109 @@ describe('Fase 1 — Personagens, Atributos, Player e HUD', () => {
       `Resistência a bebidas: ${snapshot.drinkResistance}`,
       `Velocidade: ${snapshot.moveSpeed}`,
     ]);
+  });
+
+  it('ativa invulnerabilidade e dano extremo em modo secreto sem mutar atributos-base', () => {
+    const scene = createMockScene();
+    const player = new Player(scene, 480, 300, CHARACTERS[1]);
+    const baseStats = { ...player.state.effectiveStats };
+    const baseCombatStats = { ...player.state.getCombatStats() };
+
+    player.setCheatMode(true);
+    expect(player.isInvulnerable()).toBe(true);
+    expect(player.state.getCombatStats().damageMultiplier).toBe(100);
+    expect(player.state.getCombatStats().strength).toBeGreaterThanOrEqual(1000);
+    expect(player.state.effectiveStats).toEqual(baseStats);
+
+    player.setCheatMode(false);
+    expect(player.isInvulnerable()).toBe(false);
+    expect(player.state.getCombatStats()).toEqual(baseCombatStats);
+  });
+
+  it('toca a animação de morte antes de executar a transição de cena', () => {
+    const scene = createMockScene();
+    const player = new Player(scene, 480, 300, CHARACTERS[1]);
+    scene.tweens = {
+      add: vi.fn((config) => {
+        scene.deathTween = config;
+        return config;
+      }),
+    };
+    const onComplete = vi.fn();
+
+    player.playDeathAnimation(onComplete);
+
+    expect(scene.deathTween.duration).toBe(720);
+    expect(scene.deathTween.targets).toContain(player.visual);
+    expect(onComplete).not.toHaveBeenCalled();
+    scene.deathTween.onComplete();
+    expect(onComplete).toHaveBeenCalledOnce();
+  });
+
+  it('apresenta barras de bebida com tempo/progresso e contabiliza excesso', () => {
+    const createSlot = () => ({
+      card: {
+        visible: false,
+        setVisible(value) {
+          this.visible = value;
+          return this;
+        },
+      },
+      label: { setText: vi.fn() },
+      timer: { setText: vi.fn() },
+      barFill: { width: 0, setFillStyle: vi.fn() },
+    });
+    const container = {
+      visible: false,
+      setVisible(value) {
+        this.visible = value;
+        return this;
+      },
+    };
+    const overflow = {
+      setText: vi.fn(function () {
+        return this;
+      }),
+      setVisible: vi.fn(),
+    };
+    const hud = Object.assign(Object.create(Hud.prototype), {
+      drinkTimersVisible: true,
+      drinkTimers: {
+        container,
+        slots: Array.from({ length: 6 }, createSlot),
+        overflow,
+        barWidth: 176,
+      },
+    });
+
+    hud.updateDrinkTimers([
+      {
+        name: 'Cantinho do Vale',
+        durationMs: 8000,
+        remainingMs: 2000,
+        color: 0xa855f7,
+      },
+      {
+        name: 'Cantinho do Vale',
+        durationMs: 8000,
+        remainingMs: 4000,
+        color: 0xa855f7,
+      },
+      ...Array.from({ length: 5 }, (_, index) => ({
+        name: `Bebida ${index}`,
+        durationMs: 10000,
+        remainingMs: 9000,
+        color: 0x38bdf8,
+      })),
+    ]);
+
+    expect(hud.drinkTimers.slots[0].label.setText).toHaveBeenCalledWith(
+      'Cantinho do Vale #1'
+    );
+    expect(hud.drinkTimers.slots[0].timer.setText).toHaveBeenCalledWith('2.0s');
+    expect(hud.drinkTimers.slots[0].barFill.width).toBe(44);
+    expect(overflow.setText).toHaveBeenCalledWith('+1 efeitos ativos');
+    expect(container.visible).toBe(true);
   });
 
   it('controla movimentação horizontal com velocidade individual, pulo apenas no chão e sincroniza visual', () => {

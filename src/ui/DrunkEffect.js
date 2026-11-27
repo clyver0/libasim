@@ -68,6 +68,7 @@ export class DrunkEffect {
     );
     this.active = false;
     this.intensity = 0;
+    this.suppressed = false;
     this.timeSec = 0;
     this.warp = null;
     this.swirl = null;
@@ -170,6 +171,13 @@ export class DrunkEffect {
     return scale <= 0 ? 'OFF' : `${Math.round(scale * 100)}%`;
   }
 
+  setSuppressed(suppressed) {
+    const next = Boolean(suppressed);
+    if (this.suppressed === next) return;
+    this.suppressed = next;
+    if (next) this.teardown();
+  }
+
   _pickSinglePipeline(cam, key) {
     const pipe = cam.getPostPipeline(key);
     return Array.isArray(pipe) ? pipe[pipe.length - 1] : pipe;
@@ -241,7 +249,7 @@ export class DrunkEffect {
   }
 
   update(deltaMs, target = 0) {
-    if (!this.supported) return 0;
+    if (!this.supported || this.suppressed) return 0;
     const dt = Math.max(0, deltaMs) / 1000;
     const smooth = 1 - Math.exp(-this.config.SMOOTHING_PER_SECOND * dt);
     this.intensity += (target - this.intensity) * smooth;

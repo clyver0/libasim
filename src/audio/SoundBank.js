@@ -104,6 +104,9 @@ export const SOUND_KEYS = {
   ANT_SQUISH: 'ant_squish',
   DRINK_BOUNCE: 'drink_bounce',
   SPECIAL_DRINK: 'special_drink',
+  DASH: 'dash',
+  PIT_BOUNCE: 'pit_bounce',
+  PLATFORM_CRUMBLE: 'platform_crumble',
 };
 
 export function registerDefaultSoundBank(audioManager) {
@@ -316,6 +319,39 @@ export function registerDefaultSoundBank(audioManager) {
           { freq: 1568, durationSec: 0.12 },
         ],
         volume: 0.24,
+        wave: 'square',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.DASH,
+      createToneWavDataUri({
+        notes: [
+          { freq: 480, endFreq: 210, durationSec: 0.065 },
+          { freq: 290, endFreq: 140, durationSec: 0.055 },
+        ],
+        volume: 0.22,
+        wave: 'triangle',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.PIT_BOUNCE,
+      createToneWavDataUri({
+        notes: [
+          { freq: 190, endFreq: 520, durationSec: 0.11 },
+          { freq: 520, endFreq: 780, durationSec: 0.09 },
+        ],
+        volume: 0.28,
+        wave: 'triangle',
+      })
+    );
+    audioManager.load(
+      SOUND_KEYS.PLATFORM_CRUMBLE,
+      createToneWavDataUri({
+        notes: [
+          { freq: 170, endFreq: 95, durationSec: 0.07 },
+          { freq: 120, endFreq: 68, durationSec: 0.08 },
+        ],
+        volume: 0.2,
         wave: 'square',
       })
     );

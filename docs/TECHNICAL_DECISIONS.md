@@ -57,13 +57,13 @@ A gravidade da gameplay deve ser configurada na cena correspondente.
 
 A configuração global pode permanecer com gravidade zero para preservar o comportamento das cenas de menu e os testes de inicialização existentes.
 
-## 7. Câmera
+## 7. Câmera e Progressão Horizontal
 
 Decisão:
-A câmera da gameplay será fixa.
+Substituir a câmera estática por acompanhamento horizontal contínuo (`scrollX` suave com *lookahead* à direita e `scrollY` fixo em `0`), combinado a limites físicos dinâmicos sem barreira à direita nem fundo bloqueante artificial (`checkRight = false`, `checkDown = false`).
 
 Justificativa:
-O jogador se movimenta dentro da área visível utilizando plataformas.
+Permitir que o personagem corra continuamente para a direita em um cenário infinito/progressivo em chunks sem esbarrar em paredes invisíveis de `960px`, mantendo leitura vertical estável para o combate, permitindo quedas reais nos buracos do chão e isolando toda a interface com `setScrollFactor(0)`.
 
 ## 8. Geração procedural
 
@@ -119,6 +119,28 @@ Decisões complementares (Expansão — Personagens, Habilidades, Inimigos, Efei
   - Descartadas: `gsap` (licença proprietária não-MIT e redundante com `Phaser.Tweens`), `tsparticles` (canvas DOM externo desconectado da câmera/PostFX do Phaser), `pixi-filters` e `@flare-engine/postfx` (incompatíveis com WebGL do Phaser) e `Tone.js` (redundante e pesada frente a `Howler.js` + faixas reais).
 - **Trilha sonora legal em domínio público:** adotadas gravações clássicas verificadas (`Public Domain Mark 1.0` / `CC0`) em `public/audio/music/` com mapeamento por boss e por fase em `src/data/music.js` + `src/audio/MusicDirector.js`, preservando `SOUND_KEYS.BGM_LOOP` como fallback automático.
 
+Decisões complementares (Transformação do Gameplay e Movimentação Horizontal):
+- **Pesquisa e avaliação técnica de bibliotecas para Phaser 3.90 (zero novas dependências npm):**
+  - *Câmera e scrolling*: adotada `Phaser.Cameras.Scene2D.Camera` nativa (`setScroll` com interpolação exponencial compensada por `delta`, `shake`, `flash`, `fadeIn` e câmera secundária `drinkTimerCamera`). Plugins externos de câmera para Phaser mostraram-se obsoletos ou redundantes.
+  - *Parallax*: implementado `ParallaxBackdrop` em `src/ui/ArenaBackdrop.js` com `TileSprite` nativo + faixas gráficas modulares em `scrollFactor(0)` deslocadas proporcionalmente a `scrollX` (`0.16x`, `0.18x`, `0.36x`, `0.62x`), evitando assets pesados extras.
+  - *Geração procedural de plataformas*: bibliotecas como `rot-js` e `@mikewesthad/dungeon` focam em grades top-down e não modelam arcos parabólicos com gravidade. Por isso, foi criado `HorizontalTrackSystem` reutilizando `SeededRandom` (Mulberry32) e `canJumpBetween` de `PlatformGenerator`, gerando chunks sob demanda à frente do jogador e descartando chunks atrás da câmera (`O(1)` corpos ativos).
+  - *Animações*: descartadas `gsap` (licença restritiva e loop externo desconectado de `scene.time.paused`) e `animejs` em favor de `Phaser.Tweens` nativo + cinemática inversa procedural a 60 FPS (`computePoseSkeleton`, incluindo nova pose dedicada `'dash'`).
+  - *Partículas*: mantido `Phaser.GameObjects.Particles.ParticleEmitter` nativo com cache de emissores em `EffectsManager`, descartando `tsparticles` por operar em canvas DOM fora do espaço de mundo/câmera do Phaser.
+  - *Transições cinematográficas e efeitos visuais*: combinados recursos nativos do Phaser (`Tweens`, *letterbox* em `scrollFactor(0)`, cortina de transição e *hitstop* físico controlado) com `ShockwavePostFxPipeline` já instalada em `phaser3-rex-plugins@1.80.20` (convertendo coordenadas de mundo para tela via `x - cam.scrollX`) e `Howler.fade()` para fade-in musical.
+  - *Identidade visual e fontes cartunescas*: adotadas as fontes Google Fonts `Bangers` e `Fredoka` via CSS em `index.html` centralizadas em `src/constants/typography.js`, com fallback nativo imediato para ambientes offline/testes.
+- **Plataformas móveis e desintegráveis no Arcade Physics:** plataformas `moving` usam corpos dinâmicos cinemáticos (`allowGravity: false`, `immovable: true`, `friction.x: 1`) em grupo separado (`movingPlatforms`) com correção contínua de fase senoidal; plataformas `crumbling` alternam `body.enable` conforme a máquina `intact -> shaking -> broken -> intact`.
+- **Buracos no chão e proteção contra dano repetido:** quedas abaixo de `groundTopY + TRIGGER_DEPTH_BELOW_GROUND` aplicam exatamente `30` de dano via `Player.handlePitFall`, disparam ricochete vertical/horizontal para solo seguro e travam novos danos por `pitContactLocked` + `pitRecoveryTimerMs` até a recuperação em solo firme.
+- **Reciclagem horizontal de inimigos comuns:** inimigos que ficam muito atrás da câmera ou caem em abismos são removidos via `removeEnemyWithoutDefeat` (`SpawnSystem.unregisterActiveEnemy`), devolvendo a cota ao `SpawnSystem` sem incrementar abates falsos nem travar a meta de 100 inimigos.
+
+Decisões complementares (Mudança de Perspectiva — 3D na Fase 2 e Top-Down nas Fases 3 e 4):
+- **Avaliação técnica de soluções 3D para Phaser `3.90.0` (zero novas dependências npm):**
+  - Avaliadas `three` (`Three.js`) em canvas secundário sobreposto, `Three.js` via `Phaser.GameObjects.Extern` compartilhando contexto WebGL e `@enable3d/phaser-extension`.
+  - Descartadas porque: (1) `@enable3d/phaser-extension` traz motor de física Ammo.js redundante e conflita com pipelines PostFX do Phaser `3.90.0`; (2) um segundo canvas DOM com `Three.js` cria múltiplos renderizadores, quebra o pós-processamento `DrunkEffect` (`Warp`, `Swirl`, `Shockwave`, `Barrel`, `Bloom`) aplicado sobre `cameras.main` e exige sincronização extra de camadas com a `uiCamera`; e (3) `Extern` compartilhando WebGL exige resets manuais de VAO/stencil/blend a cada frame que conflitam com os quad shaders do `phaser3-rex-plugins`.
+  - **Solução escolhida:** manter a simulação física e colisões 2D do Arcade Physics intactas na Fase 2 e introduzir `Stage3DRenderer` (`src/ui/Stage3DRenderer.js`) + `PerspectiveSystem` (`src/systems/PerspectiveSystem.js`) renderizando volumes 3D reais projetados em perspectiva (`projectPoint3D`), ordenados por profundidade (Painter's Algorithm) e iluminados por normal Lambertiana + luz pontual dinâmica (`shadeColor3D`) diretamente no WebGL nativo do Phaser (`depth: 15`, abaixo da `uiCamera`). Isso garante compatibilidade total com `DrunkEffect`, `Shockwave`, upgrades visuais, habilidades especiais e testes determinísticos sem adicionar peso nem múltiplos renderizadores.
+- **Arquitetura unificada para Visão Superior nas Fases 3 e 4 (`top_down`):**
+  - Em vez de duplicar classes de jogador, inimigos, combate ou IA, as entidades existentes (`Player`, `Enemy`, `Boss`, `Ant`, `Drink`, `GoldenCharacter`) e sistemas (`Hitbox`, `CombatSystem`, `EnemyAI`, `BossAI`, `AntManager`, `SpawnSystem`, `DrinkSystem`, `HorizontalTrackSystem`) foram estendidos com `setPerspectiveMode('top_down')` e vetor direcional `aimVector`.
+  - Nas Fases 3 e 4, `gravity.y = 0`, a movimentação e o dash operam em 8 direções normalizadas no plano `(X, Y)`, as hitboxes de golpes e combos rotacionam/escalam em 360° pelo `aimVector`, plataformas `static`/`moving` tornam-se coberturas sólidas 4-vias e `crumbling` tornam-se grades frágeis sobre o asfalto, mantendo toda a lógica de dano, combos, bebidas, lojas e upgrades 100% compartilhada.
+
 ## 11. Upgrades
 
 Decisão:
@@ -128,12 +150,30 @@ O UpgradeSystem aplica os efeitos mecânicos.
 
 O CharacterAppearanceSystem aplica os efeitos visuais.
 
-## 12. Testes
+## 12. Testes e validação
 
 Decisão:
-Utilizar Vitest para testar regras e cálculos independentes da engine.
+Utilizar Vitest para testes unitários e de integração, aliados à revisão estática do código e análise de erros de lógica e integração.
 
-Complementar com testes de integração e validação manual no navegador.
+Manter:
+- Testes automatizados com Vitest (unitários e de integração).
+- Correção de falhas encontradas nos testes.
+- Revisão estática do código e análise de erros de lógica e integração.
+
+Não executar (salvo solicitação explícita do usuário):
+- `npm run build` ou qualquer outro comando de build.
+- `npm run dev`.
+- Abrir navegador ou iniciar o jogo para validação.
+- Playwright, Cypress ou outras ferramentas de automação visual.
+- Capturas de tela (screenshots) ou gravações de vídeo.
+- Validações visuais ou manuais do gameplay (realizadas manualmente pelo usuário).
+
+Fluxo ao concluir cada etapa:
+1. Executar somente os testes automatizados relevantes com Vitest.
+2. Corrigir eventuais falhas.
+3. Fazer revisão estática das alterações.
+4. Atualizar a documentação do projeto (`PROGRESS.md` e `CHANGELOG.md`).
+5. Informar o que foi implementado e quais testes automatizados foram executados.
 
 ## 13. Controle de versão
 
@@ -146,16 +186,20 @@ Branches principais:
 
 Criar commits após funcionalidades concluídas e testadas.
 
-## 14. Economia de contexto e desenvolvimento
+## 14. Economia de contexto, tokens e desenvolvimento
 
 Decisões:
 - Dividir o desenvolvimento em etapas.
 - Evitar análise completa do projeto em tarefas pequenas.
-- Consultar somente arquivos relevantes.
+- Consultar somente arquivos relevantes e ler apenas os trechos necessários de arquivos grandes (usar busca/grep e intervalos de linhas, especialmente em `GAME_DESIGN.md`, `ARCHITECTURE.md`, `PROGRESS.md` e `CHANGELOG.md`).
+- Para atualizar `PROGRESS.md` e `CHANGELOG.md`, ler apenas o trecho onde a nova entrada será inserida (topo ou final), nunca o histórico inteiro.
+- Não reler arquivos que já estão no contexto e não foram alterados.
+- Agrupar leituras, buscas e edições independentes no mesmo turno.
 - Evitar reescrever arquivos inteiros.
-- Utilizar testes direcionados.
-- Evitar agentes paralelos em sistemas interdependentes.
-- Atualizar documentação após cada etapa.
+- Utilizar testes direcionados com Vitest filtrados pelo arquivo/teste específico com saída compacta (`--reporter=dot` ou `--bail=1`) e revisão estática de código; não reexecutar testes já aprovados sem novas edições.
+- Não gastar tempo, tokens ou recursos iniciando o jogo, gerando builds ou produzindo evidências visuais (screenshots, vídeos, automação visual) sem solicitação explícita do usuário.
+- Evitar agentes paralelos em sistemas interdependentes e evitar delegar tarefas simples para subagentes.
+- Atualizar documentação após cada etapa e manter respostas diretas e concisas (sem colar blocos inteiros já editados nem repetir resumos de `PROGRESS.md`/`CHANGELOG.md`).
 - Não implementar funcionalidades não solicitadas.
 
 ## 15. Decisões pendentes

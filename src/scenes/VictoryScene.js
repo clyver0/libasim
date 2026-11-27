@@ -2,6 +2,7 @@ import Phaser from 'phaser';
 import { audioManager } from '../audio/AudioManager.js';
 import { SOUND_KEYS, registerDefaultSoundBank } from '../audio/SoundBank.js';
 import { InputController } from '../systems/InputController.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { createCyberNightBackdrop } from '../ui/ArenaBackdrop.js';
 import { setupCrispScene } from '../utils/display.js';
 
@@ -48,15 +49,19 @@ export class VictoryScene extends Phaser.Scene {
       .setStrokeStyle(2.5, 0x22c55e);
 
     this.add
-      .text(width / 2, 88, '🏆 VITÓRIA! RUN CONCLUÍDA', {
-        fontSize: '30px',
+      .text(width / 2, 86, '🏆 VITÓRIA! RUN CONCLUÍDA!', {
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '36px',
         fontStyle: 'bold',
         color: '#4ade80',
+        stroke: '#020617',
+        strokeThickness: 6,
       })
       .setOrigin(0.5);
 
     this.add
-      .text(width / 2, 124, 'Você derrotou os 100 inimigos e o Boss Final!', {
+      .text(width / 2, 126, 'Você atravessou todas as fases e derrotou o Boss Final!', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '15px',
         color: '#cbd5e1',
       })
@@ -65,6 +70,7 @@ export class VictoryScene extends Phaser.Scene {
     const lines = formatVictorySummaryLines(this.summary);
     this.add
       .text(width / 2, 248, lines.join('\n'), {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '15px',
         color: '#f8fafc',
         align: 'center',

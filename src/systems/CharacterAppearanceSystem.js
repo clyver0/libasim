@@ -122,9 +122,13 @@ export function computePoseSkeleton(
     ? computeStrikeWeight(motion?.attackProgress ?? 0.5)
     : 0;
 
-  // Inclinação dinâmica do tronco na corrida ou no golpe
+  const isDashPose = pose === 'dash';
+
+  // Inclinação dinâmica do tronco na corrida, dash/slide ou no golpe
   let leanX = 0;
-  if (isAttackPose) {
+  if (isDashPose) {
+    leanX = dir * (grounded ? 8.5 : 10);
+  } else if (isAttackPose) {
     const attackLean =
       pose === 'heavy' || pose === 'combo_heavy'
         ? 6.5
@@ -138,21 +142,23 @@ export function computePoseSkeleton(
     leanX = dir * Math.min(3, Math.abs(vx) * 0.01);
   }
 
+  const slideDropY = isDashPose ? (grounded ? 9 : 4) : 0;
+
   const hip = {
     x: leanX * 0.25,
-    y: 10 + runBob * 0.6,
+    y: 10 + runBob * 0.6 + slideDropY,
   };
   const shoulder = {
     x: leanX * 0.85,
-    y: -5 + breathe * 0.7 + runBob,
+    y: -5 + breathe * 0.7 + runBob + slideDropY * 0.9,
   };
   const neck = {
     x: leanX * 0.95,
-    y: -10 + breathe * 0.8 + runBob,
+    y: -10 + breathe * 0.8 + runBob + slideDropY * 0.85,
   };
   const head = {
     x: leanX * 1.08,
-    y: -18 + breathe + runBob,
+    y: -18 + breathe + runBob + slideDropY * 0.8,
   };
 
   // Posição base de guarda viva para mãos e pés
@@ -162,7 +168,21 @@ export function computePoseSkeleton(
   let frontFoot = { x: dir * 8.5, y: footY };
   let backFoot = { x: -dir * 8.5, y: footY };
 
-  if (!grounded && !isAttackPose) {
+  if (isDashPose) {
+    if (grounded) {
+      // Slide rasteiro estiloso no chão
+      frontFoot = { x: hip.x + dir * 19, y: footY - 1 };
+      backFoot = { x: hip.x - dir * 12, y: footY - 3.5 };
+      frontHand = { x: shoulder.x + dir * 14, y: shoulder.y + 3 };
+      backHand = { x: shoulder.x - dir * 15, y: shoulder.y - 2 };
+    } else {
+      // Dash aéreo aerodinâmico
+      frontFoot = { x: hip.x - dir * 14, y: footY - 6 };
+      backFoot = { x: hip.x - dir * 18, y: footY - 3 };
+      frontHand = { x: shoulder.x + dir * 17, y: shoulder.y - 1 };
+      backHand = { x: shoulder.x - dir * 13, y: shoulder.y + 2 };
+    }
+  } else if (!grounded && !isAttackPose) {
     // Animação aérea fluida (pulo vs queda)
     const rising = vy < -20;
     frontFoot = {

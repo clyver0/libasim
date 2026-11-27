@@ -3,6 +3,187 @@ import { SeededRandom } from '../utils/SeededRandom.js';
 const STAGE_ACCENT_COLORS = [0x38bdf8, 0x10b981, 0xf59e0b, 0xd946ef];
 
 /**
+ * Gerencia camadas de cenário com efeito Parallax horizontal contínuo sem depender de assets extras.
+ * Combina a imagem de fundo da Fase 1 (quando disponível) com silhuetas distantes, prédios médios
+ * e lanternas/postes urbanos próximos que se deslocam em velocidades proporcionais à câmera.
+ */
+export class ParallaxBackdrop {
+  constructor(
+    scene,
+    {
+      width = 960,
+      height = 540,
+      seed = 'libasim-parallax',
+      photoTextureKey = null,
+    } = {}
+  ) {
+    this.scene = scene;
+    this.width = width;
+    this.height = height;
+    this.spanWidth = width * 2;
+    this.stageIndex = 0;
+
+    this.skyBase = createCyberNightBackdrop(scene, width, height, `${seed}-sky`);
+    this.skyBase?.setScrollFactor?.(0);
+    this.skyBase?.setDepth?.(-35);
+
+    this.photoTile = null;
+    if (
+      photoTextureKey &&
+      scene?.textures?.exists?.(photoTextureKey) &&
+      typeof scene?.add?.tileSprite === 'function'
+    ) {
+      this.photoTile = scene.add
+        .tileSprite(width / 2, height / 2, width, height, photoTextureKey)
+        .setScrollFactor(0)
+        .setDepth(-32)
+        .setAlpha(0.72);
+      const src = scene.textures.get(photoTextureKey)?.getSourceImage?.();
+      if (src?.height > 0) {
+        const scale = height / src.height;
+        this.photoTile.setTileScale?.(scale, scale);
+      }
+    } else if (
+      photoTextureKey &&
+      scene?.textures?.exists?.(photoTextureKey) &&
+      typeof scene?.add?.image === 'function'
+    ) {
+      this.photoImage = scene.add
+        .image(width / 2, height / 2, photoTextureKey)
+        .setDisplaySize(width, height)
+        .setScrollFactor(0)
+        .setDepth(-32)
+        .setAlpha(0.72);
+    }
+
+    this.farLayer = scene?.add?.graphics?.()?.setDepth?.(-28)?.setScrollFactor?.(0) ?? null;
+    this.midLayer = scene?.add?.graphics?.()?.setDepth?.(-24)?.setScrollFactor?.(0) ?? null;
+    this.nearLayer = scene?.add?.graphics?.()?.setDepth?.(-18)?.setScrollFactor?.(0) ?? null;
+
+    this._seed = seed;
+    this._drawParallaxStrips();
+  }
+
+  _drawParallaxStrips() {
+    const rng = new SeededRandom(`${this._seed}-strips`);
+    const h = this.height;
+    const span = this.spanWidth;
+    const accent =
+      STAGE_ACCENT_COLORS[this.stageIndex % STAGE_ACCENT_COLORS.length] ?? 0x38bdf8;
+
+    if (this.farLayer) {
+      this.farLayer.clear();
+      for (let copy = 0; copy < 2; copy += 1) {
+        const offsetX = copy * this.width;
+        const localRng = new SeededRandom(`${this._seed}-far`);
+        let x = 0;
+        while (x < this.width) {
+          const bw = localRng.int(58, 108);
+          const bh = localRng.int(120, 235);
+          const by = h - 40 - bh;
+          this.farLayer.fillStyle(0x0b1326, 0.56);
+          this.farLayer.fillRect(offsetX + x, by, bw - 4, bh + 40);
+          x += bw;
+        }
+      }
+    }
+
+    if (this.midLayer) {
+      this.midLayer.clear();
+      for (let copy = 0; copy < 2; copy += 1) {
+        const offsetX = copy * this.width;
+        const localRng = new SeededRandom(`${this._seed}-mid`);
+        let x = 8;
+        while (x < this.width - 20) {
+          const bw = localRng.int(68, 112);
+          const bh = localRng.int(80, 165);
+          const by = h - 40 - bh;
+          this.midLayer.fillStyle(0x0f172a, 0.72);
+          this.midLayer.fillRect(offsetX + x, by, bw - 8, bh + 40);
+          this.midLayer.lineStyle(1.5, accent, 0.28);
+          this.midLayer.strokeRect(offsetX + x, by, bw - 8, bh);
+
+          for (let wy = by + 14; wy < h - 58; wy += 18) {
+            for (let wx = x + 10; wx < x + bw - 20; wx += 16) {
+              if (localRng.next() < 0.35) {
+                this.midLayer.fillStyle(
+                  localRng.next() < 0.7 ? 0xfde68a : accent,
+                  0.32
+                );
+                this.midLayer.fillRect(offsetX + wx, wy, 6, 8);
+              }
+            }
+          }
+          x += bw + 10;
+        }
+      }
+    }
+
+    if (this.nearLayer) {
+      this.nearLayer.clear();
+      const postSpacing = 192;
+      for (let x = 40; x < span; x += postSpacing) {
+        // Poste estilizado estilo Liberdade / urbano com lanternas penduradas
+        const baseY = h - 40;
+        const topY = h - 178;
+        this.nearLayer.lineStyle(3, 0x1e293b, 0.85);
+        this.nearLayer.lineBetween(x, baseY, x, topY);
+        this.nearLayer.lineBetween(x - 16, topY + 8, x + 16, topY + 8);
+
+        // Lanternas duplas vibrantes
+        for (const lx of [x - 13, x + 13]) {
+          this.nearLayer.fillStyle(0xef4444, 0.22);
+          this.nearLayer.fillCircle(lx, topY + 18, 11);
+          this.nearLayer.fillStyle(0xfef2f2, 0.85);
+          this.nearLayer.fillCircle(lx, topY + 18, 4.5);
+          this.nearLayer.lineStyle(1.5, accent, 0.65);
+          this.nearLayer.strokeCircle(lx, topY + 18, 6.5);
+        }
+      }
+    }
+    void rng;
+  }
+
+  setStageIndex(stageIndex = 0) {
+    if (this.stageIndex === stageIndex) return;
+    this.stageIndex = stageIndex;
+    this._drawParallaxStrips();
+  }
+
+  update(scrollX = 0) {
+    const wrap = (factor) => {
+      const mod = ((scrollX * factor) % this.width + this.width) % this.width;
+      return -mod;
+    };
+    if (this.photoTile) {
+      this.photoTile.tilePositionX = scrollX * 0.16;
+    }
+    this.farLayer?.setPosition?.(wrap(0.18), 0);
+    this.midLayer?.setPosition?.(wrap(0.36), 0);
+    this.nearLayer?.setPosition?.(wrap(0.62), 0);
+  }
+
+  setVisible(visible = true) {
+    const show = Boolean(visible);
+    this.skyBase?.setVisible?.(show);
+    this.photoTile?.setVisible?.(show);
+    this.photoImage?.setVisible?.(show);
+    this.farLayer?.setVisible?.(show);
+    this.midLayer?.setVisible?.(show);
+    this.nearLayer?.setVisible?.(show);
+  }
+
+  destroy() {
+    this.skyBase?.destroy?.();
+    this.photoTile?.destroy?.();
+    this.photoImage?.destroy?.();
+    this.farLayer?.destroy?.();
+    this.midLayer?.destroy?.();
+    this.nearLayer?.destroy?.();
+  }
+}
+
+/**
  * Renderiza o cenário urbano noturno estilizado no fundo de uma cena Phaser.
  * Puramente visual, sem impacto na física ou lógica.
  */
@@ -114,72 +295,174 @@ export function renderArenaPlatforms(graphics, layout, stageIndex = 0) {
   const accent =
     STAGE_ACCENT_COLORS[stageIndex % STAGE_ACCENT_COLORS.length] ?? 0x38bdf8;
 
-  // 1. Chão principal da arena
-  const ground = layout.ground;
-  if (ground) {
+  // 1. Segmentos de chão sólido + Buracos sinalizados
+  const segments =
+    Array.isArray(layout.groundSegments) && layout.groundSegments.length > 0
+      ? layout.groundSegments
+      : layout.ground
+        ? [layout.ground]
+        : [];
+
+  for (const ground of segments) {
     const gx = ground.x - ground.width / 2;
     const gy = ground.y - ground.height / 2;
     const gw = ground.width;
     const gh = ground.height;
 
-    // Base escura profunda
     graphics.fillStyle(0x0b1120, 1);
     graphics.fillRect(gx, gy, gw, gh);
 
-    // Faixa superior pavimentada
     graphics.fillStyle(0x1e293b, 1);
     graphics.fillRect(gx, gy, gw, 12);
 
-    // Juntas de blocos no piso
     graphics.lineStyle(1, 0x0f172a, 0.85);
     for (let x = gx + 32; x < gx + gw; x += 48) {
       graphics.lineBetween(x, gy + 3, x - 8, gy + gh);
     }
 
-    // Linha luminosa de acabamento no topo do chão
     graphics.fillStyle(accent, 0.25);
     graphics.fillRect(gx, gy - 2, gw, 5);
     graphics.lineStyle(2, accent, 0.9);
     graphics.lineBetween(gx, gy + 1, gx + gw, gy + 1);
   }
 
-  // 2. Plataformas suspensas estilizadas
-  for (const plat of layout.platforms ?? []) {
-    const px = plat.x - plat.width / 2;
-    const py = plat.y - plat.height / 2;
+  // Buracos no chão: abismo escuro + sinalização cartunesca de perigo nas bordas
+  for (const hole of layout.holes ?? []) {
+    const hl = hole.left;
+    const hr = hole.right;
+    const hw = hole.width;
+    const hy = hole.topY ?? 500;
+    const hh = 48;
+
+    graphics.fillStyle(0x02040a, 0.96);
+    graphics.fillRect(hl, hy, hw, hh);
+    graphics.fillStyle(0xef4444, 0.16);
+    graphics.fillRect(hl + 2, hy + hh - 16, Math.max(4, hw - 4), 16);
+
+    // Bordas listradas amarelo/preto nas quinas esquerda e direita do buraco
+    for (const curbX of [hl - 12, hr]) {
+      graphics.fillStyle(0xfacc15, 0.95);
+      graphics.fillRect(curbX, hy, 12, 10);
+      graphics.lineStyle(2, 0x0f172a, 0.95);
+      graphics.lineBetween(curbX + 3, hy, curbX, hy + 10);
+      graphics.lineBetween(curbX + 9, hy, curbX + 6, hy + 10);
+    }
+    graphics.lineStyle(2, 0xf87171, 0.65);
+    graphics.lineBetween(hl, hy + hh - 4, hr, hy + hh - 4);
+  }
+
+  // 2. Plataformas suspensas estilizadas por categoria (static, moving, crumbling)
+  const platformsToRender = layout.allPlatforms ?? layout.platforms ?? [];
+  for (const plat of platformsToRender) {
+    const pType = plat.type ?? 'static';
+    const shakeX = plat.shakeOffsetX ?? 0;
+    const shakeY = plat.shakeOffsetY ?? 0;
+    const px = plat.x - plat.width / 2 + shakeX;
+    const py = plat.y - plat.height / 2 + shakeY;
     const pw = plat.width;
     const ph = plat.height;
+
+    // Plataforma desintegrada temporariamente: silhueta fantasma tracejada
+    if (pType === 'crumbling' && plat.solid === false) {
+      graphics.lineStyle(1.5, 0xfb923c, 0.24);
+      graphics.strokeRoundedRect?.(px, py, pw, ph, 5);
+      continue;
+    }
+
+    // Trilho guia sutil para plataformas móveis
+    if (pType === 'moving' && plat.amplitude > 0) {
+      graphics.lineStyle(1.5, 0x38bdf8, 0.24);
+      if (plat.axis === 'horizontal') {
+        graphics.lineBetween(
+          plat.baseX - plat.amplitude,
+          plat.baseY,
+          plat.baseX + plat.amplitude,
+          plat.baseY
+        );
+      } else {
+        graphics.lineBetween(
+          plat.baseX,
+          plat.baseY - plat.amplitude,
+          plat.baseX,
+          plat.baseY + plat.amplitude
+        );
+      }
+    }
 
     // Sombra inferior suave
     graphics.fillStyle(0x020617, 0.45);
     graphics.fillRoundedRect(px + 2, py + 4, pw, ph, 5);
 
-    // Corpo metálico chanfrado
-    graphics.fillStyle(0x1e293b, 0.98);
+    const bodyColor =
+      pType === 'crumbling'
+        ? plat.state === 'shaking'
+          ? 0x7c2d12
+          : 0x451a03
+        : pType === 'moving'
+          ? 0x0f2942
+          : 0x1e293b;
+
+    const topStripeColor =
+      pType === 'crumbling'
+        ? plat.state === 'shaking'
+          ? 0xf87171
+          : 0xfb923c
+        : pType === 'moving'
+          ? 0xfacc15
+          : accent;
+
+    // Corpo chanfrado
+    graphics.fillStyle(bodyColor, 0.98);
     graphics.fillRoundedRect(px, py, pw, ph, 5);
 
-    // Faixa inferior mais escura para volume 3D
-    graphics.fillStyle(0x0f172a, 0.95);
-    graphics.fillRoundedRect(px + 2, py + ph * 0.45, pw - 4, ph * 0.5, 3);
+    graphics.fillStyle(0x0f172a, 0.88);
+    graphics.fillRoundedRect(px + 2, py + ph * 0.48, pw - 4, ph * 0.46, 3);
 
-    // Treliça interna discreta
-    graphics.lineStyle(1, 0x334155, 0.7);
-    for (let tx = px + 14; tx < px + pw - 14; tx += 22) {
-      graphics.lineBetween(tx, py + 4, tx + 10, py + ph - 3);
-      graphics.lineBetween(tx + 10, py + 4, tx, py + ph - 3);
+    if (pType === 'crumbling') {
+      // Rachaduras visíveis indicando desintegração ao pisar
+      graphics.lineStyle(1.6, 0xfdba74, 0.85);
+      for (let cx = px + 24; cx < px + pw - 20; cx += 34) {
+        graphics.lineBetween(cx, py + 2, cx - 5, py + ph * 0.55);
+        graphics.lineBetween(cx - 5, py + ph * 0.55, cx + 4, py + ph - 2);
+      }
+    } else if (pType === 'moving') {
+      // Chevrons direcionais e propulsores luminosos
+      graphics.lineStyle(1.6, 0xfacc15, 0.85);
+      const midX = px + pw / 2;
+      const midY = py + ph / 2;
+      if (plat.axis === 'horizontal') {
+        graphics.lineBetween(midX - 12, midY, midX - 6, midY - 4);
+        graphics.lineBetween(midX - 12, midY, midX - 6, midY + 4);
+        graphics.lineBetween(midX + 12, midY, midX + 6, midY - 4);
+        graphics.lineBetween(midX + 12, midY, midX + 6, midY + 4);
+      } else {
+        graphics.lineBetween(midX, midY - 5, midX - 5, midY - 1);
+        graphics.lineBetween(midX, midY - 5, midX + 5, midY - 1);
+        graphics.lineBetween(midX, midY + 5, midX - 5, midY + 1);
+        graphics.lineBetween(midX, midY + 5, midX + 5, midY + 1);
+      }
+    } else {
+      // Treliça metálica padrão
+      graphics.lineStyle(1, 0x334155, 0.7);
+      for (let tx = px + 14; tx < px + pw - 14; tx += 22) {
+        graphics.lineBetween(tx, py + 4, tx + 10, py + ph - 3);
+        graphics.lineBetween(tx + 10, py + 4, tx, py + ph - 3);
+      }
     }
 
-    // Contorno metálico externo
-    graphics.lineStyle(1.5, 0x475569, 0.95);
+    graphics.lineStyle(
+      1.5,
+      pType === 'crumbling' ? 0x9a3412 : pType === 'moving' ? 0x0284c7 : 0x475569,
+      0.95
+    );
     graphics.strokeRoundedRect(px, py, pw, ph, 5);
 
-    // Friso superior iluminado (facilita leitura imediata de colisão vertical!)
-    graphics.lineStyle(2.5, accent, 0.95);
+    // Friso superior iluminado por categoria
+    graphics.lineStyle(2.6, topStripeColor, 0.98);
     graphics.lineBetween(px + 4, py + 1.5, px + pw - 4, py + 1.5);
 
-    // Emissores luminosos de sustentação nas pontas inferiores
     for (const emitterX of [px + 14, px + pw - 14]) {
-      graphics.fillStyle(accent, 0.22);
+      graphics.fillStyle(topStripeColor, 0.24);
       graphics.fillCircle(emitterX, py + ph + 2, 6);
       graphics.fillStyle(0xe0f2fe, 0.9);
       graphics.fillCircle(emitterX, py + ph, 2);

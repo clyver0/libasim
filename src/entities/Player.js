@@ -36,7 +36,14 @@ export function drawStickFigure(
  * - Representação visual independente (`this.visual`, Graphics sem corpo físico)
  */
 export class Player {
-  constructor(scene, x, y, characterData, physicsConfig = PHYSICS) {
+  constructor(
+    scene,
+    x,
+    y,
+    characterData,
+    physicsConfig = PHYSICS,
+    options = {}
+  ) {
     this.scene = scene;
     this.physicsConfig = physicsConfig;
     this.state = new PlayerState(characterData);
@@ -55,6 +62,17 @@ export class Player {
     this.hurtKnockbackVx = 0;
     this.flashTimerMs = 0;
 
+    // Corrida horizontal contínua, abertura de fase, dash/slide e proteção de buraco
+    this.continuousRun = Boolean(options.continuousRun);
+    this.introAutoWalk = false;
+    this.dashTimerMs = 0;
+    this.dashCooldownMs = 0;
+    this.dashDirection = 1;
+    this.dashSpeed = 0;
+    this.isSlideDash = false;
+    this.pitRecoveryTimerMs = 0;
+    this.pitContactLocked = false;
+
     // Estado temporário de habilidade especial (sempre limpo por `clearAbilityState`)
     this.abilityInvulnerable = false;
     this.abilityMoveSpeed = null;
@@ -63,7 +81,9 @@ export class Player {
     this.abilityVisualScale = 1;
     this.powerMode = false;
     this.powerStacks = 0;
+    this.drinkPowerStacks = 0;
     this.powerFx = null;
+    this.cheatMode = false;
     this.upgradeAppearance = null;
     this.appearanceState = this._composeAppearance(null);
 
@@ -107,7 +127,7 @@ export class Player {
     const up =
       upgradeState ?? CharacterAppearanceSystem.resolveAppearanceState([]);
     const types = new Set([...baseTypes, ...(up.activeTypes ?? [])]);
-    if (this.powerMode) types.add('gorilla_arms');
+    if (this.powerMode || this.cheatMode) types.add('gorilla_arms');
     const flags = CharacterAppearanceSystem.resolveAppearanceState(
       [...types].map((type) => ({ visual: { type } }))
     );
@@ -118,7 +138,7 @@ export class Player {
       armStrokeWidth: Math.max(
         up.armStrokeWidth ?? 3.4,
         flags.armStrokeWidth ?? 3.4,
-        this.powerMode ? 7.5 : 0
+        this.powerMode || this.cheatMode ? 7.5 : 0
       ),
       torsoStrokeWidth: up.torsoStrokeWidth ?? 3.8,
     };
@@ -166,8 +186,21 @@ export class Player {
 
   /** Modo de força (Açougue + Cantinho do Vale): braços grossos, pulso e chamas. */
   setPowerMode(active, stackCount = active ? 1 : 0) {
-    const next = Boolean(active);
-    const nextStacks = next ? Math.max(1, Math.min(10, Math.floor(stackCount))) : 0;
+    this.drinkPowerStacks = active
+      ? Math.max(1, Math.min(10, Math.floor(stackCount)))
+      : 0;
+    this._syncPowerMode();
+  }
+
+  setCheatMode(active) {
+    this.cheatMode = Boolean(active);
+    this.state.setCheatMode(this.cheatMode);
+    this._syncPowerMode();
+  }
+
+  _syncPowerMode() {
+    const next = this.cheatMode || this.drinkPowerStacks > 0;
+    const nextStacks = this.cheatMode ? 10 : this.drinkPowerStacks;
     if (this.powerMode === next && this.powerStacks === nextStacks) return;
     this.powerMode = next;
     this.powerStacks = nextStacks;
@@ -185,6 +218,7 @@ export class Player {
 
   _drawPowerFx() {
     if (!this.powerFx) return;
+    this.powerFx.setVisible?.(true);
     const cx = this.body.x + this.body.halfWidth;
     const cy = this.body.y + this.body.halfHeight;
     const t = this.animTimeMs * 0.012;
@@ -219,10 +253,189 @@ export class Player {
   }
 
   isInvulnerable() {
-    return this.invulnerabilityTimerMs > 0 || this.abilityInvulnerable;
+    return (
+      this.invulnerabilityTimerMs > 0 ||
+      this.pitRecoveryTimerMs > 0 ||
+      this.dashTimerMs > 0 ||
+      this.introAutoWalk ||
+      this.abilityInvulnerable ||
+      this.cheatMode
+    );
+  }
+
+  setContinuousRun(enabled) {
+    this.continuousRun = Boolean(enabled);
+  }
+
+  setIntroWalk(enabled) {
+    this.introAutoWalk = Boolean(enabled);
+    if (this.introAutoWalk) {
+      this.dashTimerMs = 0;
+      this.hurtKnockbackTimerMs = 0;
+      this.facing = 1;
+    }
+  }
+
+  isDashing() {
+    return this.dashTimerMs > 0;
+  }
+
+  canDash() {
+    return (
+      !this.isDead() &&
+      !this.introAutoWalk &&
+      this.dashTimerMs <= 0 &&
+      this.dashCooldownMs <= 0 &&
+      this.hurtKnockbackTimerMs <= 0 &&
+      this.abilityForm !== 'car'
+    );
+  }
+
+  startDash(directionHint = 0) {
+    if (!this.canDash()) return false;
+
+    const dashCfg = this.physicsConfig.DASH ?? PHYSICS.DASH;
+    const dir = directionHint !== 0 ? Math.sign(directionHint) : this.facing || 1;
+
+    const speedMultiplier =
+      this.state.gameplayModifiers?.moveSpeedMultiplier ?? 1;
+    const baseSpeed =
+      this.abilityMoveSpeed ??
+      this.physicsConfig.PLAYER_MOVE_SPEED * speedMultiplier;
+
+    this.facing = dir;
+    this.dashDirection = dir;
+    this.isSlideDash = this.isGrounded();
+    this.dashSpeed = Math.max(
+      dashCfg.MIN_SPEED,
+      baseSpeed * dashCfg.SPEED_MULTIPLIER
+    );
+    this.dashTimerMs = dashCfg.DURATION_MS;
+    this.dashCooldownMs = dashCfg.COOLDOWN_MS;
+    this.invulnerabilityTimerMs = Math.max(
+      this.invulnerabilityTimerMs,
+      dashCfg.INVULNERABILITY_MS
+    );
+    this.body.setVelocityX(dir * this.dashSpeed);
+
+    const origin = this.getCombatOrigin();
+    this.scene?.events?.emit?.('player:dash', {
+      x: origin.x,
+      y: origin.y,
+      direction: this.facing,
+      slide: this.isSlideDash,
+    });
+    this._redrawVisual();
+    return true;
+  }
+
+  getDashSnapshot() {
+    const dashCfg = this.physicsConfig.DASH ?? PHYSICS.DASH;
+    const total = Math.max(1, dashCfg.COOLDOWN_MS);
+    const progress =
+      this.dashTimerMs > 0
+        ? 1
+        : Math.max(0, Math.min(1, 1 - this.dashCooldownMs / total));
+    return {
+      active: this.dashTimerMs > 0,
+      ready: this.canDash(),
+      cooldownRemainingMs: Math.max(0, this.dashCooldownMs),
+      cooldownTotalMs: total,
+      progress,
+    };
+  }
+
+  /**
+   * Aplica queda em buraco: perde exatamente 30 HP uma única vez por contato,
+   * ativa proteção contra dano repetido durante a recuperação e impulsiona de volta.
+   */
+  handlePitFall({
+    groundTopY = 500,
+    safeLandingX = null,
+  } = {}) {
+    if (this.isDead()) {
+      return { triggered: false, damaged: false, damageApplied: 0 };
+    }
+
+    const pitCfg = this.physicsConfig.PIT_HAZARD ?? PHYSICS.PIT_HAZARD;
+    const protectedFromDamage =
+      this.pitContactLocked || this.pitRecoveryTimerMs > 0;
+
+    this.pitContactLocked = true;
+    this.dashTimerMs = 0;
+
+    let damageApplied = 0;
+    let damaged = false;
+    if (!protectedFromDamage) {
+      this.pitRecoveryTimerMs = pitCfg.RECOVERY_PROTECTION_MS;
+      this.invulnerabilityTimerMs = Math.max(
+        this.invulnerabilityTimerMs,
+        pitCfg.RECOVERY_PROTECTION_MS
+      );
+      this.flashTimerMs = 240;
+      if (!this.cheatMode) {
+        damageApplied = this.state.applyDamage(pitCfg.DAMAGE);
+        damaged = damageApplied > 0;
+      }
+    }
+
+    if (this.isDead()) {
+      this.body.setVelocityX(0);
+      this.body.setVelocityY?.(0);
+      this._redrawVisual();
+      return { triggered: true, damaged, damageApplied, fatal: true };
+    }
+
+    // Reposiciona logo acima do nível do chão e aplica ricochete parabólico para área segura
+    this.body.y = groundTopY - this.body.height - 6;
+    const centerX = this.body.x + this.body.halfWidth;
+    const desiredVx =
+      typeof safeLandingX === 'number' && safeLandingX > centerX
+        ? Math.min(430, Math.max(pitCfg.BOUNCE_FORWARD_VX, (safeLandingX - centerX) * 2.1))
+        : pitCfg.BOUNCE_FORWARD_VX;
+
+    this.facing = 1;
+    this.hurtKnockbackVx = desiredVx;
+    this.hurtKnockbackVy = 0;
+    this.hurtKnockbackTimerMs = 230;
+    this.body.setVelocityX(desiredVx);
+    this.body.setVelocityY?.(pitCfg.BOUNCE_VELOCITY_Y);
+    this.syncVisualToBody();
+    this._redrawVisual();
+
+    return { triggered: true, damaged, damageApplied, fatal: false };
+  }
+
+  playDeathAnimation(onComplete = null) {
+    this.visual?.setVisible?.(true);
+    const targets = [this.visual, this.face].filter(Boolean);
+    if (!targets.length || typeof this.scene?.tweens?.add !== 'function') {
+      onComplete?.();
+      return null;
+    }
+
+    return this.scene.tweens.add({
+      targets,
+      alpha: 0,
+      angle: '+=260',
+      duration: 720,
+      ease: 'Cubic.In',
+      onComplete: () => onComplete?.(),
+    });
+  }
+
+  _getVisualFootOffset() {
+    const visualScale = Math.abs(
+      this.visual?.scaleY ?? this.visual?.scale ?? 1
+    );
+    return (
+      (this.body?.halfHeight ?? this.physicsConfig.PLAYER_BODY_HEIGHT / 2) /
+      Math.max(0.001, visualScale)
+    );
   }
 
   _redrawVisual() {
+    this.visual?.setVisible?.(true);
     const color = this.isDead()
       ? 0x64748b
       : this.flashTimerMs > 0
@@ -230,7 +443,11 @@ export class Player {
       : this.state.color;
     const auraColor = this.isDead() ? null : this.activeAuraColor;
     const effectivePose =
-      this.combatPose !== 'idle' ? this.combatPose : this.locomotionPose;
+      this.combatPose !== 'idle'
+        ? this.combatPose
+        : this.dashTimerMs > 0
+          ? 'dash'
+          : this.locomotionPose;
 
     const motion = {
       animTimeMs: this.animTimeMs,
@@ -241,12 +458,22 @@ export class Player {
     };
 
     if (this.abilityForm === 'car') {
-      drawCar(this.visual, { color: this.state.color, facing: this.facing, timeMs: this.animTimeMs });
+      drawCar(this.visual, {
+        color: this.state.color,
+        facing: this.facing,
+        timeMs: this.animTimeMs,
+        footOffset: this._getVisualFootOffset(),
+      });
       if (this.face) this.face.setVisible(false);
       return;
     }
     if (this.abilityForm === 'ant') {
-      drawAntForm(this.visual, { color: this.state.color, facing: this.facing, timeMs: this.animTimeMs });
+      drawAntForm(this.visual, {
+        color: this.state.color,
+        facing: this.facing,
+        timeMs: this.animTimeMs,
+        footOffset: this._getVisualFootOffset(),
+      });
       if (this.face) this.face.setVisible(false);
       return;
     }
@@ -291,8 +518,9 @@ export class Player {
       Math.max(0, this.state.gameplayModifiers?.knockbackResistance ?? 0)
     );
     const effectiveKnockback = (hitInfo.knockback ?? 0) * (1 - kbResistance);
-    this.hurtKnockbackVx =
-      dir * (effectiveKnockback * ENEMY_CONFIG.KNOCKBACK_VELOCITY_SCALE);
+    const kbSpeed = effectiveKnockback * ENEMY_CONFIG.KNOCKBACK_VELOCITY_SCALE;
+    this.hurtKnockbackVx = dir * kbSpeed;
+    this.hurtKnockbackVy = 0;
     this.hurtKnockbackTimerMs = ENEMY_CONFIG.PLAYER_HURT_KNOCKBACK_DURATION_MS;
     this.body.setVelocityX(this.hurtKnockbackVx);
 
@@ -315,7 +543,7 @@ export class Player {
       Math.round(this.physicsConfig.PLAYER_BODY_WIDTH * targetScale)
     );
     const newHeight = Math.max(
-      16,
+      12,
       Math.round(this.physicsConfig.PLAYER_BODY_HEIGHT * targetScale)
     );
 
@@ -391,14 +619,44 @@ export class Player {
   }
 
   applyInput(intent) {
+    if (this.introAutoWalk) {
+      const walkSpeed =
+        (this.physicsConfig.CONTINUOUS_RUN ?? PHYSICS.CONTINUOUS_RUN)
+          .INTRO_WALK_SPEED;
+      this.facing = 1;
+      this.body.setVelocityX(walkSpeed);
+      return;
+    }
+
     if (!intent) return;
+
+    if (intent.dash) {
+      const dirHint = intent.horizontal !== 0 ? intent.horizontal : this.facing || 1;
+      this.startDash(dirHint);
+    }
+
+    if (this.dashTimerMs > 0) {
+      if (
+        (this.dashDirection > 0 && this.body?.blocked?.right) ||
+        (this.dashDirection < 0 && this.body?.blocked?.left)
+      ) {
+        this.dashTimerMs = 0;
+        this.body.setVelocityX(0);
+      } else {
+        this.body.setVelocityX(this.dashDirection * this.dashSpeed);
+      }
+      if (intent.jump) {
+        this.jump();
+      }
+      return;
+    }
 
     let horizontal = intent.horizontal ?? 0;
     if (this.abilityAutoRun) {
-      // Carro: avança sozinho na direção atual e inverte ao bater em paredes
+      // Carro: avança sozinho; no modo horizontal segue sempre adiante sem parede artificial
       if (this.body.blocked?.left) this.facing = 1;
-      if (this.body.blocked?.right) this.facing = -1;
-      if (horizontal === 0) horizontal = this.facing;
+      if (!this.continuousRun && this.body.blocked?.right) this.facing = -1;
+      if (horizontal === 0) horizontal = this.continuousRun ? 1 : this.facing;
     }
     this.moveHorizontal(horizontal);
 
@@ -434,6 +692,20 @@ export class Player {
         0,
         this.invulnerabilityTimerMs - deltaMs
       );
+    }
+
+    if (this.pitRecoveryTimerMs > 0) {
+      this.pitRecoveryTimerMs = Math.max(0, this.pitRecoveryTimerMs - deltaMs);
+    }
+    if (this.pitContactLocked && this.isGrounded() && this.pitRecoveryTimerMs <= 0) {
+      this.pitContactLocked = false;
+    }
+
+    if (this.dashCooldownMs > 0) {
+      this.dashCooldownMs = Math.max(0, this.dashCooldownMs - deltaMs);
+    }
+    if (this.dashTimerMs > 0) {
+      this.dashTimerMs = Math.max(0, this.dashTimerMs - deltaMs);
     }
 
     if (this.flashTimerMs > 0) {

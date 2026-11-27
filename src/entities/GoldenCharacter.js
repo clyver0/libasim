@@ -18,6 +18,7 @@ export class GoldenCharacter {
       id = `coquinho_${Date.now()}`,
       direction = 1,
       screenWidth = 960,
+      viewportLeft = 0,
       y = 474,
       config = SHOP_CONFIG.COQUINHO,
       onHitReward = null,
@@ -28,6 +29,7 @@ export class GoldenCharacter {
     this.direction = direction >= 0 ? 1 : -1;
     this.facing = this.direction;
     this.screenWidth = screenWidth;
+    this.viewportLeft = viewportLeft;
     this.config = config;
     this.onHitReward = onHitReward;
 
@@ -42,10 +44,16 @@ export class GoldenCharacter {
     this.destroyed = false;
     this.animTimerMs = 0;
 
+    // Se vier da esquerda acompanhando a corrida horizontal, usa velocidade superior ao jogador
+    this.effectiveSpeed =
+      viewportLeft > 0 && this.direction > 0
+        ? Math.max(config.MOVE_SPEED, 360)
+        : config.MOVE_SPEED;
+
     const startX =
       this.direction > 0
-        ? -config.SPAWN_OFFSET_X
-        : screenWidth + config.SPAWN_OFFSET_X;
+        ? viewportLeft - config.SPAWN_OFFSET_X
+        : viewportLeft + screenWidth + config.SPAWN_OFFSET_X;
 
     this.collider = scene.add.rectangle(
       startX,
@@ -178,7 +186,7 @@ export class GoldenCharacter {
   update(deltaMs = 16.67) {
     if (this.isDead()) return true;
 
-    this.body.setVelocityX?.(this.direction * this.config.MOVE_SPEED);
+    this.body.setVelocityX?.(this.direction * this.effectiveSpeed);
     this.body.setVelocityY?.(0);
 
     // Simula deslocamento horizontal caso o body seja um mock simples sem step do Arcade Physics
@@ -191,11 +199,15 @@ export class GoldenCharacter {
     this._redraw(pose);
 
     const origin = this.getCombatOrigin();
+    const activeViewLeft =
+      this.scene?.cameras?.main?.scrollX ?? this.viewportLeft ?? 0;
     const outLeft =
-      this.direction < 0 && origin.x < -this.config.DESPAWN_MARGIN_X;
+      this.direction < 0 &&
+      origin.x < activeViewLeft - this.config.DESPAWN_MARGIN_X;
     const outRight =
       this.direction > 0 &&
-      origin.x > this.screenWidth + this.config.DESPAWN_MARGIN_X;
+      origin.x >
+        activeViewLeft + this.screenWidth + this.config.DESPAWN_MARGIN_X;
 
     if (outLeft || outRight) {
       this.expired = true;

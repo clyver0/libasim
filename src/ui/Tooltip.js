@@ -1,4 +1,5 @@
 import { GAMEPLAY } from '../constants/gameplay.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 
 /**
  * Calcula posição segura para um tooltip dentro dos limites visíveis da tela lógica (960x540).
@@ -39,6 +40,7 @@ export class Tooltip {
     this.maxWidth = 270;
 
     this.container = scene.add.container(0, 0).setDepth(220);
+    this.container.setScrollFactor?.(0);
     this.container.setVisible(false);
 
     this.shadowBg = scene.add
@@ -52,6 +54,7 @@ export class Tooltip {
 
     this.titleText = scene.add
       .text(12, 9, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '13px',
         fontStyle: 'bold',
         color: '#38bdf8',
@@ -61,6 +64,7 @@ export class Tooltip {
 
     this.bodyText = scene.add
       .text(12, 29, '', {
+        fontFamily: TYPOGRAPHY.UI,
         fontSize: '12px',
         color: '#e2e8f0',
         lineSpacing: 3,
@@ -122,8 +126,8 @@ export class Tooltip {
     if (!gameObject?.on) return;
 
     const getPointerCoords = (pointer) => ({
-      px: pointer?.worldX ?? pointer?.x ?? gameObject.x ?? 0,
-      py: pointer?.worldY ?? pointer?.y ?? gameObject.y ?? 0,
+      px: pointer?.x ?? pointer?.worldX ?? gameObject.x ?? 0,
+      py: pointer?.y ?? pointer?.worldY ?? gameObject.y ?? 0,
     });
 
     gameObject.on('pointerover', (pointer) => {

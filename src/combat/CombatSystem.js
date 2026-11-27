@@ -249,6 +249,7 @@ export class CombatSystem {
         damage,
         knockback: attack.knockback ?? 0,
         direction: attacker?.facing ?? 1,
+        directionVector: { x: attacker?.facing ?? 1, y: 0 },
         hitbox: hitboxBounds,
       };
 

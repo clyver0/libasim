@@ -135,3 +135,21 @@ export const AUDIO_CONFIG = {
   FADE_IN_MS: 250,
   BOSS_FADE_IN_MS: 140,
 };
+
+/** Abertura padronizada no início de cada uma das 4 fases (a cada 25 abates). */
+export const PHASE_OPENING_CONFIG = {
+  WALK_DURATION_MS: 3200,
+  MUSIC_FADE_IN_MS: 1400,
+  MUSIC_FADE_OUT_MS: 420,
+  ARROW_BLINK_PERIOD_MS: 340,
+};
+
+/** Transições cinematográficas, barras letterbox e pausas de impacto (hitstop). */
+export const CINEMATIC_CONFIG = {
+  LETTERBOX_HEIGHT: 34,
+  LETTERBOX_TWEEN_MS: 320,
+  PHASE_WIPE_DURATION_MS: 520,
+  MILESTONE_HITSTOP_MS: 130,
+  COMBO_KILL_HITSTOP_MS: 52,
+  BOSS_ENTRANCE_PAUSE_MS: 180,
+};

@@ -1,5 +1,6 @@
 import Phaser from 'phaser';
 import { GAMEPLAY } from '../constants/gameplay.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 import { summarizeUpgradeEffects } from '../data/upgrades.js';
 
 function coverBackground(scene, image, textureKey, width, height) {
@@ -32,6 +33,7 @@ export class ShopUI {
     const height = GAMEPLAY.SCREEN_HEIGHT;
 
     this.container = scene.add.container(width / 2, height / 2).setDepth(130);
+    this.container.setScrollFactor?.(0);
     this.container.setVisible(false);
 
     this.officialArtwork = scene.add
@@ -54,15 +56,19 @@ export class ShopUI {
 
     this.titleText = scene.add
       .text(0, -226, '', {
-        fontSize: '21px',
+        fontFamily: TYPOGRAPHY.DISPLAY,
+        fontSize: '26px',
         fontStyle: 'bold',
         color: '#f8fafc',
+        stroke: '#020617',
+        strokeThickness: 4,
       })
       .setOrigin(0.5);
 
     this.subtitleText = scene.add
-      .text(0, -193, '', {
-        fontSize: '12.5px',
+      .text(0, -192, '', {
+        fontFamily: TYPOGRAPHY.UI,
+        fontSize: '13px',
         color: '#cbd5e1',
       })
       .setOrigin(0.5);

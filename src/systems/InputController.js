@@ -18,10 +18,14 @@ export class InputController {
   }
 
   _registerKeys(keyboard) {
+    const keyByCode = new Map();
     for (const [action, keyNames] of Object.entries(this.controlMap)) {
       this.keys[action] = keyNames.map((name) => {
         const keyCode = Phaser.Input.Keyboard.KeyCodes[name] ?? name;
-        return keyboard.addKey(keyCode);
+        if (!keyByCode.has(keyCode)) {
+          keyByCode.set(keyCode, keyboard.addKey(keyCode));
+        }
+        return keyByCode.get(keyCode);
       });
     }
   }
@@ -44,14 +48,26 @@ export class InputController {
     return left + right;
   }
 
+  getVerticalAxis() {
+    const up = this.isActionDown('MOVE_UP') ? -1 : 0;
+    const down = this.isActionDown('MOVE_DOWN') ? 1 : 0;
+    return up + down;
+  }
+
   isJumpPressed() {
     return this.isActionJustPressed('JUMP') || this.isActionDown('JUMP');
+  }
+
+  isDashPressed() {
+    return this.isActionJustPressed('DASH');
   }
 
   readMovementIntent() {
     return {
       horizontal: this.getHorizontalAxis(),
+      vertical: 0,
       jump: this.isJumpPressed(),
+      dash: this.isDashPressed(),
     };
   }
 

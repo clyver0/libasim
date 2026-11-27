@@ -18,6 +18,7 @@ export class PlayerState {
     this.upgrades = [];
     this.acquiredUpgradeIds = [];
     this.activeEffects = [];
+    this.cheatMode = false;
     // Modificadores temporários de habilidades especiais (nunca tocam baseStats/multipliers)
     this.abilityModifiers = [];
     this.drinkSynergies = characterData.drinkSynergies ?? {};
@@ -126,10 +127,23 @@ export class PlayerState {
     return this.recalculateStats();
   }
 
+  setCheatMode(active) {
+    this.cheatMode = Boolean(active);
+  }
+
   getCombatStats() {
-    return {
+    const stats = {
       ...this.effectiveStats,
       ...this.gameplayModifiers,
+    };
+    if (!this.cheatMode) return stats;
+
+    return {
+      ...stats,
+      strength: Math.max(stats.strength ?? 0, 1000),
+      damageMultiplier: 100,
+      lightDamageMultiplier: 100,
+      comboDamageMultiplier: 100,
     };
   }
 

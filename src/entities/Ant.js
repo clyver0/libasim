@@ -168,7 +168,7 @@ export class Ant {
       this.knockbackTimerMs -= deltaMs;
     } else if (move) {
       this.body.setVelocityX(move.dir * this.moveSpeed);
-      if (move.dir !== 0) this.facing = move.dir;
+      if (move.dir !== 0) this.facing = move.dir >= 0 ? 1 : -1;
       if (move.jump) {
         this.body.setVelocityY(this.jumpVelocity);
         this.jumpCooldownMs = ANT_CONFIG.JUMP_COOLDOWN_MS;

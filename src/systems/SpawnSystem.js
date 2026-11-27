@@ -64,9 +64,18 @@ export class SpawnSystem {
     return this.getRemainingQuota(activeCount) > 0;
   }
 
-  chooseSpawnPosition({ playerX = null, activeEnemies = [] } = {}) {
-    const minX = this.spawnConfig.MARGIN_X;
-    const maxX = Math.max(minX, this.screenWidth - this.spawnConfig.MARGIN_X);
+  chooseSpawnPosition({
+    playerX = null,
+    activeEnemies = [],
+    viewportLeft = 0,
+    viewportWidth = this.screenWidth,
+    holes = null,
+  } = {}) {
+    const minX = viewportLeft + this.spawnConfig.MARGIN_X;
+    const maxX = Math.max(
+      minX,
+      viewportLeft + viewportWidth - this.spawnConfig.MARGIN_X
+    );
 
     const topEnemiesX = [];
     for (const enemy of activeEnemies) {
@@ -87,6 +96,12 @@ export class SpawnSystem {
     for (let i = 0; i < attempts; i += 1) {
       const candidateX = this.rng.range(minX, maxX);
 
+      const overHole =
+        Array.isArray(holes) &&
+        holes.some(
+          (h) => candidateX > h.left - 18 && candidateX < h.right + 18
+        );
+
       const playerDist =
         typeof playerX === 'number' ? Math.abs(candidateX - playerX) : Infinity;
 
@@ -100,13 +115,15 @@ export class SpawnSystem {
       const respectsTopEnemies =
         minEnemyDist >= this.spawnConfig.MIN_ACTIVE_TOP_SPACING_X;
 
-      if (respectsPlayer && respectsTopEnemies) {
+      if (!overHole && respectsPlayer && respectsTopEnemies) {
         bestX = candidateX;
         break;
       }
 
       // Pontuação de fallback para escolher o ponto menos conflituoso possível
+      const holePenalty = overHole ? -300 : 0;
       const score =
+        holePenalty +
         Math.min(playerDist, this.spawnConfig.MIN_PLAYER_DISTANCE_X) * 2 +
         Math.min(minEnemyDist, this.spawnConfig.MIN_ACTIVE_TOP_SPACING_X);
       if (score > bestScore) {
@@ -123,7 +140,14 @@ export class SpawnSystem {
 
   update(
     deltaMs,
-    { playerX = null, activeEnemies = null, playerDead = false } = {}
+    {
+      playerX = null,
+      activeEnemies = null,
+      playerDead = false,
+      viewportLeft = 0,
+      viewportWidth = this.screenWidth,
+      holes = null,
+    } = {}
   ) {
     if (this.stopped || playerDead) {
       return null;
@@ -148,6 +172,9 @@ export class SpawnSystem {
     const position = this.chooseSpawnPosition({
       playerX,
       activeEnemies: enemiesList,
+      viewportLeft,
+      viewportWidth,
+      holes,
     });
     this.activeIds.add(id);
 

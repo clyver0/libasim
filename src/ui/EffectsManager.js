@@ -1,4 +1,5 @@
-import { EFFECTS_CONFIG } from '../constants/expansion.js';
+import { CINEMATIC_CONFIG, EFFECTS_CONFIG } from '../constants/expansion.js';
+import { TYPOGRAPHY } from '../constants/typography.js';
 
 const TEXTURE_SPARK = 'fx_spark';
 const TEXTURE_STREAK = 'fx_streak';
@@ -76,7 +77,9 @@ export class EffectsManager {
       const raw = cam.getPostPipeline(SHOCKWAVE_KEY);
       const pipe = Array.isArray(raw) ? raw[raw.length - 1] : raw;
       if (!pipe) return;
-      pipe.setCenter?.(x, y);
+      const screenX = x - (cam.scrollX ?? 0);
+      const screenY = y - (cam.scrollY ?? 0);
+      pipe.setCenter?.(screenX, screenY);
       pipe.setWaveWidth?.(waveWidth);
       pipe.setWaveRadius?.(8);
       this._shockwaveTween = this.scene.tweens.addCounter({
@@ -301,12 +304,12 @@ export class EffectsManager {
     if (this.activeTexts >= (this.config.MAX_FLOATING_TEXTS ?? 14)) return null;
     const label = scene.add
       .text(x, y, text, {
-        fontFamily: 'sans-serif',
-        fontSize: '14px',
+        fontFamily: TYPOGRAPHY.UI,
+        fontSize: '15px',
         fontStyle: 'bold',
         color: '#ffffff',
         stroke: '#090d16',
-        strokeThickness: 4,
+        strokeThickness: 4.5,
         align: 'center',
         ...style,
       })
@@ -326,29 +329,31 @@ export class EffectsManager {
     return label;
   }
 
-  /** Anúncio grande no centro da tela com entrada em "pop" e saída suave. */
-  announce(text, { color = '#facc15', sub = '', y = 150, holdMs = 1100, size = 40 } = {}) {
+  /** Anúncio grande no centro da tela com entrada em "pop" cartunesco e saída suave. */
+  announce(text, { color = '#facc15', sub = '', y = 150, holdMs = 1100, size = 42 } = {}) {
     const { scene } = this;
     if (this.disposed || !scene?.add?.text || !scene?.tweens?.add) return null;
     const width = scene.logicalWidth ?? 960;
     const main = scene.add
       .text(width / 2, y, text, {
-        fontFamily: 'sans-serif',
+        fontFamily: TYPOGRAPHY.DISPLAY,
         fontSize: `${size}px`,
         fontStyle: 'bold',
         color,
         stroke: '#090d16',
         strokeThickness: 8,
+        letterSpacing: 1.5,
         align: 'center',
       })
       .setOrigin(0.5)
       .setDepth(95)
       .setScale(0.2)
       .setAlpha(0);
+    main.setScrollFactor?.(0);
     const subtitle = sub
       ? scene.add
           .text(width / 2, y + size * 0.85, sub, {
-            fontFamily: 'sans-serif',
+            fontFamily: TYPOGRAPHY.UI,
             fontSize: `${Math.round(size * 0.42)}px`,
             fontStyle: 'bold',
             color: '#f8fafc',
@@ -359,6 +364,7 @@ export class EffectsManager {
           .setDepth(95)
           .setAlpha(0)
       : null;
+    subtitle?.setScrollFactor?.(0);
     const targets = subtitle ? [main, subtitle] : [main];
     scene.tweens.add({
       targets: main,
@@ -383,13 +389,139 @@ export class EffectsManager {
     const color = Number.parseInt((phase.color ?? '#facc15').replace('#', ''), 16);
     const width = this.scene?.logicalWidth ?? 960;
     const height = this.scene?.logicalHeight ?? 540;
-    this.announce(phase.name, { color: phase.color, sub: phase.subtitle, size: 54, holdMs: 1500, y: 140 });
+    const scrollX = this.scene?.cameras?.main?.scrollX ?? 0;
+    const centerX = scrollX + width / 2;
+    this.announce('PASSOU DE FASE!', {
+      color: phase.color,
+      sub: `${phase.name}: ${phase.subtitle}`,
+      size: 48,
+      holdMs: 1500,
+      y: 140,
+    });
     this.flash(260, 255, 255, 255);
     this.shake(320, 0.009);
-    this.ring(width / 2, height / 2, color, { radius: 90, durationMs: 700, width: 8, depth: 70 });
-    this.ring(width / 2, height / 2, 0xffffff, { radius: 60, durationMs: 500, width: 4, depth: 70 });
-    this.sparks(width / 2, height / 2, color, 40, { speed: [200, 600], lifespan: 700, scale: 1.4 });
-    this.shockwave(width / 2, height / 2, { maxRadius: 520, waveWidth: 34, durationMs: 540 });
+    this.ring(centerX, height / 2, color, { radius: 90, durationMs: 700, width: 8, depth: 70 });
+    this.ring(centerX, height / 2, 0xffffff, { radius: 60, durationMs: 500, width: 4, depth: 70 });
+    this.sparks(centerX, height / 2, color, 40, { speed: [200, 600], lifespan: 700, scale: 1.4 });
+    this.shockwave(centerX, height / 2, { maxRadius: 520, waveWidth: 34, durationMs: 540 });
+  }
+
+  /** Efeito cinético de dash/slide sem poluir a leitura de combate. */
+  dashBurst(origin, dir = 1, isSlide = false) {
+    if (this.disposed || !origin) return;
+    const dustY = isSlide ? origin.y + 20 : origin.y;
+    this.streaks(origin.x - dir * 10, dustY, 0x7dd3fc, 6, -dir);
+    this.sparks(origin.x - dir * 8, dustY, 0xe0f2fe, 6, {
+      speed: [50, 160],
+      lifespan: 210,
+      scale: 0.65,
+    });
+    this.ring(origin.x, origin.y, 0x38bdf8, {
+      radius: 26,
+      durationMs: 180,
+      width: 2,
+    });
+  }
+
+  /** Feedback cartunesco ao cair em buraco e sofrer ricochete (-30 HP). */
+  pitBounce(origin, damaged = true) {
+    if (this.disposed || !origin) return;
+    this.ring(origin.x, origin.y + 16, 0xfacc15, {
+      radius: 54,
+      durationMs: 320,
+      width: 4,
+    });
+    this.sparks(origin.x, origin.y + 12, 0xf97316, 16, {
+      speed: [110, 320],
+      lifespan: 360,
+      scale: 0.95,
+    });
+    if (damaged) {
+      this.shake(170, 0.006);
+      this.floatingText(
+        origin.x,
+        origin.y - 26,
+        '💥 BURACO! -30 HP',
+        { fontSize: '16px', color: '#f87171', fontFamily: TYPOGRAPHY.DISPLAY },
+        { rise: 42, durationMs: 950 }
+      );
+    }
+  }
+
+  /** Estilhaços leves quando uma plataforma desintegrável se rompe. */
+  platformCrumble(plat) {
+    if (this.disposed || !plat) return;
+    this.sparks(plat.x, plat.y, 0xfb923c, 12, {
+      speed: [45, 170],
+      lifespan: 340,
+      scale: 0.75,
+    });
+  }
+
+  /** Barras cinematográficas (letterbox) discretas para aberturas de fase e entrada de boss. */
+  setLetterbox(visible, { barHeight = CINEMATIC_CONFIG.LETTERBOX_HEIGHT } = {}) {
+    const { scene } = this;
+    if (this.disposed || !scene?.add?.rectangle) return;
+    const width = scene.logicalWidth ?? 960;
+    const height = scene.logicalHeight ?? 540;
+
+    if (!this._letterboxTop) {
+      this._letterboxTop = scene.add
+        .rectangle(width / 2, -barHeight / 2, width, barHeight, 0x020617, 0.94)
+        .setDepth(86);
+      this._letterboxTop.setScrollFactor?.(0);
+      this._letterboxBottom = scene.add
+        .rectangle(
+          width / 2,
+          height + barHeight / 2,
+          width,
+          barHeight,
+          0x020617,
+          0.94
+        )
+        .setDepth(86);
+      this._letterboxBottom.setScrollFactor?.(0);
+    }
+
+    if (scene.tweens?.add) {
+      scene.tweens.add({
+        targets: this._letterboxTop,
+        y: visible ? barHeight / 2 : -barHeight / 2,
+        duration: CINEMATIC_CONFIG.LETTERBOX_TWEEN_MS,
+        ease: 'Cubic.Out',
+      });
+      scene.tweens.add({
+        targets: this._letterboxBottom,
+        y: visible ? height - barHeight / 2 : height + barHeight / 2,
+        duration: CINEMATIC_CONFIG.LETTERBOX_TWEEN_MS,
+        ease: 'Cubic.Out',
+      });
+    } else {
+      this._letterboxTop.y = visible ? barHeight / 2 : -barHeight / 2;
+      this._letterboxBottom.y = visible ? height - barHeight / 2 : height + barHeight / 2;
+    }
+  }
+
+  /** Cortina de transição rápida e estilosa entre fases. */
+  playPhaseCurtain({ color = 0x0ea5e9, durationMs = CINEMATIC_CONFIG.PHASE_WIPE_DURATION_MS } = {}) {
+    const { scene } = this;
+    if (this.disposed || !scene?.add?.rectangle || !scene?.tweens?.add) return;
+    const width = scene.logicalWidth ?? 960;
+    const height = scene.logicalHeight ?? 540;
+
+    const wipe = scene.add
+      .rectangle(-width * 0.6, height / 2, width * 1.2, height, 0x020617, 0.92)
+      .setStrokeStyle(6, color, 1)
+      .setDepth(105);
+    wipe.setScrollFactor?.(0);
+
+    scene.tweens.add({
+      targets: wipe,
+      x: width * 1.6,
+      duration: durationMs,
+      ease: 'Cubic.InOut',
+      onComplete: () => wipe.destroy(),
+    });
   }
 
   /** Fortalecimento do Açougue ao coletar Cantinho do Vale. */
@@ -448,6 +580,10 @@ export class EffectsManager {
   dispose() {
     this.disposed = true;
     this._clearShockwave();
+    this._letterboxTop?.destroy?.();
+    this._letterboxBottom?.destroy?.();
+    this._letterboxTop = null;
+    this._letterboxBottom = null;
     for (const emitter of this.emitters.values()) emitter.destroy?.();
     this.emitters.clear();
     for (const emitter of this.followers.values()) emitter.destroy?.();

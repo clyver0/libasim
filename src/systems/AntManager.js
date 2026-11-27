@@ -14,6 +14,7 @@ export class AntManager {
   constructor({
     scene,
     platforms = null,
+    movingPlatforms = null,
     config = ANT_CONFIG,
     random = Math.random,
     onAntSquished = null,
@@ -22,6 +23,7 @@ export class AntManager {
   } = {}) {
     this.scene = scene;
     this.platforms = platforms;
+    this.movingPlatforms = movingPlatforms;
     this.config = config;
     this.random = random;
     this.onAntSquished = onAntSquished;
@@ -33,6 +35,10 @@ export class AntManager {
     this.rainActive = false;
     this.rainTimerMs = 0;
     this.nextId = 1;
+  }
+
+  getAllAnts() {
+    return [...this.hostile, ...this.allies];
   }
 
   // ---- Chuva hostil -------------------------------------------------------------------
@@ -68,6 +74,9 @@ export class AntManager {
     });
     ant.body.setVelocityY?.(cfg.FALL_VELOCITY);
     if (this.platforms) this.scene.physics.add.collider(ant.collider, this.platforms);
+    if (this.movingPlatforms) {
+      this.scene.physics.add.collider(ant.collider, this.movingPlatforms);
+    }
     this.hostile.push(ant);
     return ant;
   }
@@ -90,6 +99,9 @@ export class AntManager {
       },
     });
     if (this.platforms) this.scene.physics.add.collider(ant.collider, this.platforms);
+    if (this.movingPlatforms) {
+      this.scene.physics.add.collider(ant.collider, this.movingPlatforms);
+    }
     this.allies.push(ant);
     return ant;
   }
@@ -103,7 +115,8 @@ export class AntManager {
         this.rainTimerMs = this.config.HOSTILE.SPAWN_INTERVAL_MS;
         const margin = this.config.HOSTILE.SPAWN_MARGIN_X;
         const width = this.scene.logicalWidth ?? this.scene.scale?.width ?? 960;
-        this.spawnHostile(margin + this.random() * (width - margin * 2));
+        const scrollX = this.scene.cameras?.main?.scrollX ?? 0;
+        this.spawnHostile(scrollX + margin + this.random() * (width - margin * 2));
       }
     }
 
@@ -116,9 +129,15 @@ export class AntManager {
     if (!player) return;
     const playerOrigin = player.getCombatOrigin();
     const playerBox = player.getHurtbox();
+    const scrollX = this.scene?.cameras?.main?.scrollX ?? 0;
+    const maxY = (this.scene?.logicalHeight ?? 540) + 60;
     for (const ant of this.hostile) {
       if (ant.isDead() || ant.destroyed) continue;
       const pos = ant.getCombatOrigin();
+      if (pos.y > maxY || (scrollX > 0 && pos.x < scrollX - 480)) {
+        ant.kill('out_of_bounds');
+        continue;
+      }
       const move = decideAntMove({
         x: pos.x,
         y: pos.y,
@@ -145,8 +164,15 @@ export class AntManager {
       return;
     }
     ant.contactCooldownMs = ant.contactCooldownMaxMs;
-    const dir = Math.sign(player.getCombatOrigin().x - ant.getCombatOrigin().x) || 1;
-    player.onHit?.({ damage: ant.damage, knockback: ant.knockback, direction: dir });
+    const po = player.getCombatOrigin();
+    const ao = ant.getCombatOrigin();
+    const dx = po.x - ao.x;
+    const dir = Math.sign(dx) || 1;
+    player.onHit?.({
+      damage: ant.damage,
+      knockback: ant.knockback,
+      direction: dir,
+    });
   }
 
   _updateAllies(deltaMs, targets, ownerStrength) {

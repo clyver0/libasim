@@ -7,6 +7,59 @@ O arquivo registra funcionalidades implementadas, modificações técnicas e cor
 
 ## [Unreleased]
 
+### Unificação do Gameplay em 2D Lateral (`side_2d`)
+- **Remoção de FPS 3D e Top-Down**: removidos `src/ui/Stage3DRenderer.js`, `src/ui/TopDownRenderer.js` e `src/systems/PerspectiveSystem.js`, consolidando o jogo exclusivamente em gameplay lateral 2D (`side_2d`) nas 4 fases.
+- **Limpeza e simplificação de sistemas e entidades**: removidas flags e branches específicos de perspectiva (`firstPersonMode`, `topDownMode`, `laneZ`, `customRenderHidden`, `FP_JUMP`, `FP_DASH`, `TOP_DOWN_DASH`, `playPerspectiveTransition`) em `MainScene.js`, `Player.js`, `Enemy.js`, `Boss.js`, `Ant.js`, `Drink.js`, `GoldenCharacter.js`, `CombatSystem.js`, `EnemyAI.js`, `BossAI.js`, `HorizontalTrackSystem.js`, `InputController.js`, `controls.js`, `SpawnSystem.js`, `DrinkSystem.js`, `AntManager.js`, `AbilityRuntime.js`, `DevToolsController.js` e `EffectsManager.js`.
+- **Preservação integral da progressão das 4 fases**: mantidos dificuldade escalonada, aberturas de fase, plataformas procedurais (`static` na Fase 1, `moving` na Fase 2, `crumbling` na Fase 3+), buracos com ricochete, combate, dash/slide, bebidas, upgrades, habilidades, chuva de formigas na Fase 4, Mini-Chefão e Boss Final.
+- **Testes automatizados**: atualizados `tests/dev_tools.test.js` e `tests/perspective_phases.test.js` para validar a unificação em `side_2d` nas 4 fases.
+
+### Dev Tools — Controle de Progressão de Fases (`12345`)
+- **Exclusividade de desenvolvimento**: restringida a sequência `12345` e a modal de Dev Tools ao ambiente `import.meta.env.DEV` (`isDevEnvironment`).
+- **Controle completo de fases na modal existente (`src/systems/DevToolsController.js`, `src/scenes/MainScene.js`)**: adicionados seleção direta entre as Fases 1 a 4, botão de avanço imediato para a próxima fase e alternância de progressão automática a cada `25` inimigos simulados, preservando o controle do Modo Imortal na mesma modal.
+- **Sincronização de sistemas e simulação proporcional de build**: ao trocar ou avançar de fase, atualiza `PhaseSystem`, `DifficultySystem`, `ShopSystem`, `SpawnSystem`, `HorizontalTrackSystem`, `PerspectiveSystem` (`side_2d` -> `first_person_3d` -> `top_down`), `AntManager` (chuva de formigas na Fase 4), música e HUDs, além de sortear e aplicar upgrades e bebidas em quantidade proporcional à fase com os catálogos e sistemas reais (`UpgradeSystem`, `DrinkSystem`, `DrinkEffectManager`).
+- **Testes automatizados**: adicionado `tests/dev_tools.test.js` cobrindo guarda de ambiente `DEV`, seleção direta das 4 fases, avanço imediato, progressão automática a cada 25 inimigos simulados e integração com a modal na `MainScene`.
+
+### Configuração do projeto — Economia de tokens
+- Adicionada a seção `## Economia de tokens` em `GEMINI.md` e atualizada a seção `14. Economia de contexto, tokens e desenvolvimento` em `docs/TECHNICAL_DECISIONS.md` (leitura por trechos/grep, atualização parcial de `PROGRESS.md`/`CHANGELOG.md`, agrupamento de chamadas por turno, Vitest filtrado e compacto, evitar subagentes em tarefas simples e respostas concisas).
+
+### Mudança de Perspectiva — Primeira Pessoa 3D na Fase 2 e Top-Down nas Fases 3 e 4
+#### Funcionalidades novas
+- **`PerspectiveSystem` (`src/systems/PerspectiveSystem.js`)**: gerenciamento explícito de perspectivas por fase da run — Fase 1 em `side_2d` (estilo atual preservado), Fase 2 em `first_person_3d` (gameplay 3D em primeira pessoa) e Fases 3 e 4 em `top_down` (visão superior completa).
+- **Fase 2 — Gameplay e Renderização 3D em Primeira Pessoa (`src/ui/Stage3DRenderer.js`, `src/entities/Player.js`, `src/combat/CombatSystem.js`, `src/systems/EnemyAI.js`, `src/systems/BossAI.js`)**:
+  - Câmera FPS pura sem uso de mouse (`yaw = 0` frontal fixo, `worldToFirstPersonSpace`, `projectCameraPointFP`, `clipPolygonNear`) com *head-bob* em figura-8, *pitch* de salto/queda, *roll* de strafe, *kick* de impacto e variação de FOV no dash, renderizada em canvas único do Phaser (`depth < 19`, preservando `DrunkEffect` PostFX e `uiCamera` limpa).
+  - Modelos 3D volumétricos reais readaptados da Fase 1 2D: cinemática inversa analítica em 3 eixos (`solveIK3D`), cilindros cônicos com escorço de perspectiva real por articulação (`_drawLimbFrustum3D`) e ordenação de profundidade por membro, preservando visor escuro, cores, escalas e todos os acessórios (`ninja_headband`, `rocket_shoes`, `concrete_shoulders`, `beer_belly`, `precision_glasses`, `boxing_gloves`, `hard_hat`, `chaos_crown`, `hero_cape`, `spring_legs` e lança 3D do `spear_thrower`).
+  - Animações reais de ataque e dano em 3D (`WINDUP` com recuo/carga -> `ATTACKING` com investida frontal em `-X` crescendo na tela + onda de choque/arco de corte 3D -> `RECOVERING`, além de `HURT`), IA ajustada para engajar sempre pela frente da câmera FPS e números de dano projetados em 3D.
+  - Cenário urbano readaptado da Fase 1 (`ArenaBackdrop`): prédios 3D com grades de janelas iluminadas, postes estilo Liberdade com lanternas duplas vermelhas, buracos com meios-fios listrados amarelo/preto, plataformas 3D com trilhos/propulsores e viewmodel FPS polido (antebraços cônicos, munhequeiras, punhos/luvas de upgrades, jabs alternados, cruzado pesado e impacto duplo especial).
+- **Fases 3 e 4 — Gameplay e renderização em Visão Superior (`src/ui/TopDownRenderer.js`)**:
+  - Movimentação em 8 direções com velocidade diagonal normalizada, gravidade desativada e dash em 8 direções (`SHIFT` / `SPACE`) sem cooldown.
+  - Combate 360° real: `Hitbox.getWorldBounds` projeta e orienta hitboxes pelo vetor `aimVector`, `CombatSystem` propaga `directionVector` para knockback 2D, e `EnemyAI`, `BossAI` e `AntManager` perseguem, desviam de crateras, separam-se radialmente e atacam em 360°.
+  - Cenário e obstáculos vistos de cima: avenida com calçadas, faixas e telhados, crateras 2D (`-30 HP` + ricochete radial + proteção contra dano repetido), blocos sólidos de cobertura (`static`), barreiras móveis (`moving`) e grades frágeis no piso (`crumbling`).
+- **Transições cinematográficas de perspectiva (`EffectsManager.playPerspectiveTransition`)**: grade de profundidade 3D convergente + zoom/shockwave ao entrar na Fase 2, e anéis concêntricos de elevação de câmera + shockwave ao entrar na Fase 3.
+- **Testes automatizados**: adicionado `tests/perspective_phases.test.js` validando mapeamento de fases, projeção/iluminação e renderização 3D sem mutar coordenadas físicas, movimentação/dash 8-dir e crateras 2D, hitboxes 360°, IA 2D e enxame de formigas na Fase 4 (`14` arquivos / `93` testes aprovados).
+
+#### Correções e ajustes técnicos
+- Deduplicado o registro de teclas em `InputController._registerKeys` para evitar instâncias duplicadas de `Phaser.Input.Keyboard.Key` quando ações de perspectivas distintas compartilham códigos de tecla (`SHIFT`, `SPACE`, `W`/`UP`, `S`/`DOWN`).
+- Desacoplado o gatilho 2D de grades `crumbling` em `HorizontalTrackSystem.update` para verificar `player.topDownMode` em vez do índice numérico da fase.
+
+### Transformação do Gameplay e Movimentação Horizontal
+#### Funcionalidades novas
+- **Movimentação horizontal estilo beat 'em up e câmera dinâmica**: controle manual livre do jogador (sem corrida automática no gameplay normal; caminhada autônoma apenas na abertura de cada fase), com câmera acompanhando suavemente o avanço horizontal, *lookahead* e limites dinâmicos sem barreiras artificiais à direita.
+- **Cenário em Parallax e geração procedural em chunks (`HorizontalTrackSystem`)**: criação contínua de chunks horizontais à frente do jogador e descarte automático atrás da câmera, combinada ao `ParallaxBackdrop` em múltiplas camadas.
+- **Três categorias de plataformas procedurais por fase**: plataformas estáticas (`static`) desde a Fase 1, plataformas móveis horizontais e verticais (`moving`) a partir da **Fase 2**, e plataformas desintegráveis (`crumbling`) a partir da **Fase 3**.
+- **Dash / Slide como comando normal (`[SHIFT]` / `[S]` / `[↓]`)**: deslocamento rápido na direção do movimento com pose corporal própria (slide rasteiro no solo e dash no ar), partículas cinéticas, esquiva temporária contra ataques e parada segura contra obstáculos — sem cooldown nem indicador de habilidade na HUD.
+- **Buracos frequentes e longos com ricochete**: vãos frequentes no piso (incluindo buracos longos de `220–460px` sempre acompanhados por plataformas alcançáveis sobre o vão); cair em um buraco subtrai exatamente `30 HP`, impulsiona o jogador de volta à área jogável e aplica trava de proteção contra múltiplos danos durante a recuperação.
+- **Abertura padronizada a cada fase (`PhaseOpeningSystem`)**: no início das Fases 1, 2, 3 e 4 (`0`, `25`, `50` e `75` abates), o jogador caminha sozinho para a direita sem música, guiado por uma seta cartunesca piscando (`SIGA!`), seguida de entrada da música em *fade-in* e retomada do spawn de inimigos.
+- **Cinematografia e identidade cartunesca**: fontes `Bangers` e `Fredoka` (`src/constants/typography.js` + `index.html`), barras *letterbox* em aberturas/boss, cortina de transição entre fases, *hitstop* breve em marcos/abates de combo e novos efeitos sonoros procedurais (`dash`, `pit_bounce`, `platform_crumble`).
+- **Suíte de testes automatizados**: adicionado `tests/horizontal_gameplay.test.js` cobrindo corrida contínua, dash/slide, geração determinística das 3 categorias de plataformas, buracos com proteção de 30 HP, abertura das 4 fases e adaptação de spawn/IA além de `960px`.
+
+#### Correções e ajustes técnicos
+- Fixado `setScrollFactor(0)` em todos os elementos de HUD, loja, guia de combos, tooltips e anúncios, e isolados todos os elementos de UI e modais (Pause, Chiquinho Promos, Noia, Guia de Combos, Tooltips, HUD e banners) em uma câmera dedicada sem pós-processamento (`src/ui/UiCameraLayer.js`), restringindo a distorção de bebida exclusivamente à tela principal do gameplay.
+- Ajustado `Tooltip.js` para priorizar coordenadas de tela (`pointer.x`/`pointer.y`) em vez de `worldX`/`worldY` com câmera deslocada, e `EffectsManager.shockwave` para converter coordenadas de mundo em coordenadas de tela.
+- Adaptados `SpawnSystem`, `DrinkSystem`, `AntManager`, `GoldenCharacter`, `AbilityRuntime` e `EnemyAI` (incluindo saltos sobre buracos e reciclagem sem abate via `removeEnemyWithoutDefeat` para inimigos deixados muito atrás da câmera).
+
+### Configuração do projeto
+- **Regras de validação, testes e build**: atualizados `GEMINI.md`, `docs/TECHNICAL_DECISIONS.md` e `docs/PROGRESS.md` para manter testes automatizados com Vitest (unitários e de integração), correção de falhas e revisão estática; proibir execução automática de builds (`npm run build`), `npm run dev`, navegador/jogo, automação visual (Playwright, Cypress etc.), screenshots, gravações de vídeo e validações visuais; e formalizar o checklist de 5 passos ao concluir cada etapa.
+
 ### Expansão — Personagens, Habilidades, Inimigos, Efeitos Visuais e Áudio
 #### Funcionalidades novas
 - **Modais das duas lojas em tela cheia**: a oficial usa a arte do Chiquinho Promos e a especial usa a nova imagem do Noia como fundo; cards centralizados sobre uma camada de contraste.
@@ -16,6 +69,13 @@ O arquivo registra funcionalidades implementadas, modificações técnicas e cor
 - **IA dos inimigos estabilizada**: interrompe perseguição horizontal sem alvo de salto durante quedas e mantém a rota de saída de plataformas sem a lógica anti-travamento inverter o sentido.
 - **Noia no chão e destacado**: corrigido o ponto de surgimento para alinhar os pés com o chão; nome “NOIA” acompanha o personagem acima da cabeça.
 - **Pausa durante a partida**: botão visível e atalho `P` abrem opções para continuar, reiniciar ou voltar à seleção de personagem.
+- **Transições de run**: animação de derrota antes da tela de Game Over e anúncio animado explícito ao passar de fase.
+- **Modo secreto alternável**: a sequência `1-2-3-4-5` ativa invulnerabilidade e dano extremos e exibe uma modal; repetir a sequência desativa os efeitos.
+- **Timers de bebidas em barra**: até seis timers aparecem no topo central, com excesso contabilizado; a UI usa uma câmera não afetada pelo pós-processamento.
+- **Embriaguez e áudio**: efeito visual pausado na loja oficial; `Howler.rate()` modula levemente ritmo/afinação conforme a intensidade das bebidas, sem dependências adicionais.
+- **Plataformas unidirecionais**: plataformas elevadas permitem passagem por baixo e colisão pelo topo; o chão principal permanece sólido.
+- **Carga de habilidades unificada**: os três especiais agora exigem 10 abates comuns e reiniciam a carga após o uso.
+- **Formas especiais ajustadas**: pés do Tonegi são alinhados à base do corpo durante a transformação; hitbox vertical do carro do Piri reduzida e posicionada mais baixa.
 - **Efeitos de bebidas acumuláveis**: cada coleta mantém seu próprio temporizador; no Açougue, Cantinho do Vale aumenta a força progressivamente de `2×` até `10×`, com chamas e tela mais vermelha, sem efeito genérico de embriaguez.
 - **Novos upgrades substituindo cinco itens originais**: Chinês do GAB (camisa, sorte e inimigos lentos), Aliado Chiquinho Promos (mais chances de loja especial), Marmita com Ketchup Roubado, Faixa branca de jiu do Emery e Cachaça de Cobra (efeito temporário de 15s com custo de HP).
 - **Caseirinha da Casa**, a bebida mais rara, com sequência de bipes, aro dourado pulsante e aviso ao aparecer; mantém o sprite procedural até haver uma imagem própria.
@@ -26,14 +86,14 @@ O arquivo registra funcionalidades implementadas, modificações técnicas e cor
 - **Retrato atualizado do Tonegi** em `public/characters/tonegi.png`, usado na seleção e no personagem em jogo.
 - **Retratos reais dos personagens** em `public/characters/`: recortes circulares de **Açougue**, **Piri** e **Tonegi**, carregados pela tela de seleção e exibidos sobre o visual animado dos personagens durante a partida.
 - **Três personagens jogáveis** em `src/data/characters.js` e `TitleScene.js`: **Açougue** (gigante, lento, resistente, força de `2×` até `10×` com *Cantinho do Vale* e aura flamejante), **Piri** (porte médio/grande, muito forte, resistente) e **Tonegi** (muito pequeno, ágil, muito forte, pouca resistência a bebidas e imunidade passiva letal contra formigas).
-- **Habilidades especiais (`[E]`/`[Q]`)** em `src/data/abilities.js`, `SpecialAbilitySystem.js`, `AbilityRuntime.js`, `AbilityVisuals.js` e `AbilityHud.js`: *Terça do Cantinho* (chuva de Cantinhos configurável), *O fit se calou* (carrega a cada 10 abates; carro rápido e invulnerável que atropela inimigos) e *Pisa ligeiro, pisa ligeiro* (Tonegi vira formiga ainda menor, rápida e invulnerável, invocando formigas auxiliares com IA própria).
+- **Habilidades especiais (`[E]`/`[Q]`)** em `src/data/abilities.js`, `SpecialAbilitySystem.js`, `AbilityRuntime.js`, `AbilityVisuals.js` e `AbilityHud.js`: os três especiais carregam após 10 abates; *Terça do Cantinho* (chuva de Cantinhos configurável), *O fit se calou* (carro rápido e invulnerável que atropela inimigos) e *Pisa ligeiro, pisa ligeiro* (Tonegi vira formiga ainda menor, rápida e invulnerável, invocando formigas auxiliares com IA própria).
 - **Pós-processamento de embriaguez** em `src/ui/DrunkEffect.js` e `src/systems/DrunkIntensity.js` usando `phaser3-rex-plugins` (`WarpPostFxPipeline` e `SwirlPostFxPipeline`), shader de aberração cromática/visão dupla e Phaser 3.90 PostFX (`Barrel`, `ColorMatrix`, `Bloom`), com nível configurável via `[N]` (`100% / 50% / 25% / OFF`) e restauração completa ao término.
 - **Física e frequência das bebidas** em `src/constants/drinks.js` e `src/entities/Drink.js`: spawn menos frequente (`16s`), queda mais rápida com gravidade real, quique em plataformas e animação *squash & stretch*.
 - **Efeitos visuais de combate** em `src/ui/EffectsManager.js`: partículas nativas (`ParticleEmitter`), rastros em arco, antecipação, tremor de câmera, `ShockwavePostFxPipeline` (`phaser3-rex-plugins`) em combos/especiais/transições e feedback distinto por categoria (`LIGHT`, `HEAVY`, `SPECIAL`, `COMBO`).
 - **Progressão em 4 Fases e 10 arquétipos de inimigos** em `src/systems/PhaseSystem.js`, `src/constants/expansion.js` e `src/data/enemies.js`: transições visuais a cada 25 abates (`0–24`, `25–49`, `50–74`, `75–99`), ajuste de atributos de inimigos já ativos e 6 novos arquétipos (*Lanceiro*, *Muralha*, *Frenético*, *Esmagador*, *Sombra*, *Senhor da Guerra*).
 - **Fase 4 — Chuva de Formigas** em `src/entities/Ant.js` e `src/systems/AntManager.js`: enxame contínuo limitado por teto de entidades, encerramento automático ao sair da Fase 4/encerrar run e interação especial com Tonegi (`SPLAT!`, zero dano e morte imediata da formiga).
 - **Trilha sonora em domínio público/CC0 e `MusicDirector`** em `src/data/music.js`, `src/audio/MusicDirector.js`, `src/audio/AudioManager.js`, `src/audio/SoundBank.js` e `public/audio/music/`: *William Tell Overture* (partida normal), *In the Hall of the Mountain King* (Mini-Chefão), *Beethoven — 5ª Sinfonia* (Boss Final Fase 1) e *Ride of the Valkyries* (Boss Final Fase 2), com crossfade, volume configurável (`[`/`]`) e sem sobreposição.
-- **Testes automatizados da expansão** em `tests/expansion.test.js` (12 testes cobrindo todos os sistemas; 66/66 testes passando).
+- **Testes automatizados da expansão** em `tests/expansion.test.js` e `tests/phase1.test.js`, cobrindo também os novos comportamentos de gameplay; suíte atual com 80 testes aprovados em 12 arquivos.
 
 ### Fase 10 — Interface, Áudio, Tooltips e Polimento Final
 #### Correções e polimento visual (Pós-teste)

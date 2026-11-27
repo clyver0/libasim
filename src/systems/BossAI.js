@@ -42,9 +42,8 @@ export class BossAI {
     const attacks = boss.state.attacks ?? {};
     const phase = boss.state.phase ?? 1;
 
-    // Seleção de padrão de ataque quando o Boss está pronto para atacar e em solo firme
+    // Seleção de padrão de ataque em solo firme
     if (boss.isGrounded() && boss.attackCooldownMs <= 0) {
-      // Na Fase 2, se o jogador estiver próximo em ambos os lados, alterna Onda do Caos e Golpe Esmagador
       if (
         phase >= 2 &&
         attacks.shockwave &&
@@ -62,7 +61,6 @@ export class BossAI {
         };
       }
 
-      // Curta distância: Golpe Esmagador
       if (
         attacks.crush &&
         absDx <= attacks.crush.rangeX &&
@@ -78,7 +76,6 @@ export class BossAI {
         };
       }
 
-      // Média distância na mesma faixa de altura: Investida Brutal
       if (
         attacks.charge &&
         absDx > 65 &&
@@ -96,7 +93,7 @@ export class BossAI {
       }
     }
 
-    // Fora de alcance imediato: reutiliza navegação de plataformas do EnemyAI
+    // Fora de alcance imediato: reutiliza navegação 2D do EnemyAI
     const navIntent = this.navigationAI.decide(
       boss,
       player,
